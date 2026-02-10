@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+
+# Node/Next
+node_modules/
+.next/
+out/
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Logs / runtime
+*.log
+nohup.out
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Build artifacts
+dist/
+build/
+coverage/
