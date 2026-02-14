@@ -28,3 +28,23 @@ export const useAuthStore = create<AuthState>()(
     { name: "bitram-auth" }
   )
 );
+
+/* ─── Theme Store ──────────────────────────────────────────── */
+type Theme = "light" | "dark";
+
+interface ThemeState {
+  theme: Theme;
+  setTheme: (t: Theme) => void;
+  toggleTheme: () => void;
+}
+
+export const useThemeStore = create<ThemeState>()(
+  persist(
+    (set, get) => ({
+      theme: "light",
+      setTheme: (theme) => set({ theme }),
+      toggleTheme: () => set({ theme: get().theme === "light" ? "dark" : "light" }),
+    }),
+    { name: "bitram-theme" }
+  )
+);

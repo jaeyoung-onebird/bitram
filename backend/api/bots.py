@@ -91,6 +91,14 @@ async def create_bot(
         max_investment=Decimal(str(req.max_investment)),
     )
     db.add(bot)
+
+    # Award first bot creation points
+    try:
+        from core.points import award_points
+        await award_points(db, user.id, "first_bot", "첫 봇 생성")
+    except Exception:
+        pass
+
     await db.commit()
     await db.refresh(bot)
 
@@ -185,6 +193,63 @@ async def get_bot_profit(
         "win_trades": bot.win_trades or 0,
         "win_rate": (bot.win_trades / bot.total_trades * 100) if bot.total_trades else 0,
     }
+
+
+@router.post("/{bot_id}/share-profit")
+async def share_bot_profit(
+    bot_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a community post with auto-populated verified profit from bot data."""
+    from db.models import Post
+
+    bot = await _get_user_bot(bot_id, user.id, db)
+
+    if not bot.total_trades or bot.total_trades == 0:
+        raise HTTPException(400, "거래 내역이 없는 봇은 수익을 공유할 수 없습니다.")
+
+    strategy = None
+    if bot.strategy_id:
+        strategy = await db.get(Strategy, bot.strategy_id)
+
+    total = bot.total_trades or 0
+    wins = bot.win_trades or 0
+    win_rate = round(wins / total * 100, 1) if total > 0 else 0
+
+    verified_profit = {
+        "live_profit_krw": float(bot.total_profit or 0),
+        "live_trades": total,
+        "live_win_rate": win_rate,
+        "bot_name": bot.name,
+        "verified": True,
+    }
+
+    if strategy and strategy.backtest_result:
+        verified_profit["total_return_pct"] = strategy.backtest_result.get("total_return_pct")
+
+    profit_str = f"+{int(bot.total_profit)}원" if bot.total_profit >= 0 else f"{int(bot.total_profit)}원"
+    post = Post(
+        user_id=user.id,
+        category="profit",
+        title=f"[{bot.name}] 수익 인증 {profit_str} (승률 {win_rate}%)",
+        content=f"봇 '{bot.name}'의 실시간 수익을 인증합니다.\n\n총 거래: {total}건\n승률: {win_rate}%\n총 수익: {profit_str}",
+        strategy_id=bot.strategy_id,
+        verified_profit=verified_profit,
+    )
+    db.add(post)
+
+    # Award points
+    try:
+        from core.points import award_points
+        await award_points(db, user.id, "profit_shared", f"수익 공유: {bot.name}")
+    except Exception:
+        pass
+
+    await db.commit()
+    await db.refresh(post)
+
+    return {"post_id": str(post.id), "message": "수익이 커뮤니티에 공유되었습니다."}
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────

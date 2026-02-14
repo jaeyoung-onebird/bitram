@@ -23,7 +23,7 @@ class BacktestRequest(BaseModel):
 
 
 PERIOD_CANDLE_MAP = {
-    "1m": 200,     # ~1 month of 15m candles
+    "1m": 200,
     "3m": 600,
     "6m": 1200,
     "1y": 2000,
@@ -45,32 +45,12 @@ async def run_strategy_backtest(
     if not strategy:
         raise HTTPException(404, "전략을 찾을 수 없습니다.")
 
-    # Fetch historical data
+    # Fetch historical data (fetch_ohlcv handles pagination internally)
     client = get_public_client()
     candle_count = PERIOD_CANDLE_MAP.get(req.period, 600)
+    all_candles = await client.fetch_ohlcv(strategy.pair, strategy.timeframe, candle_count)
 
-    all_candles = []
-    to_param = None
-
-    # Fetch in batches of 200
-    while len(all_candles) < candle_count:
-        batch_size = min(200, candle_count - len(all_candles))
-        candles = await client.fetch_ohlcv(strategy.pair, strategy.timeframe, batch_size)
-        if not candles:
-            break
-
-        if to_param is None:
-            all_candles = candles
-        else:
-            all_candles = candles + all_candles
-
-        if len(candles) < batch_size:
-            break
-
-        # Set 'to' param for next batch
-        to_param = candles[0]["time"]
-
-    if len(all_candles) < 20:
+    if not all_candles or len(all_candles) < 20:
         raise HTTPException(400, "백테스팅에 충분한 데이터가 없습니다.")
 
     df = pd.DataFrame(all_candles)
@@ -85,6 +65,15 @@ async def run_strategy_backtest(
     # Save result
     result_dict = bt_result.to_dict()
     strategy.backtest_result = result_dict
+
+    # Award backtest points
+    try:
+        from core.points import award_points
+        await award_points(db, user.id, "first_backtest", "첫 백테스트 실행")
+        await award_points(db, user.id, "backtest_run", "백테스트 실행")
+    except Exception:
+        pass
+
     await db.commit()
 
     return result_dict

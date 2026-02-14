@@ -28,6 +28,7 @@ class User(Base):
     nickname = Column(String(50), nullable=False)
     plan = Column(String(20), default="free")  # free, basic, pro, premium
     plan_expires_at = Column(DateTime(timezone=True), nullable=True)
+    referral_code = Column(String(12), unique=True, nullable=True, index=True)
     telegram_chat_id = Column(String(50), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=utcnow)
@@ -39,6 +40,37 @@ class User(Base):
     bots = relationship("Bot", back_populates="user", cascade="all, delete-orphan")
     posts = relationship("Post", back_populates="user", cascade="all, delete-orphan")
     comments = relationship("Comment", back_populates="user", cascade="all, delete-orphan")
+    followers = relationship(
+        "Follow",
+        foreign_keys="Follow.following_id",
+        back_populates="following",
+        cascade="all, delete-orphan",
+    )
+    following = relationship(
+        "Follow",
+        foreign_keys="Follow.follower_id",
+        back_populates="follower",
+        cascade="all, delete-orphan",
+    )
+
+
+# ─── Follows ────────────────────────────────────────────────────────────────
+
+class Follow(Base):
+    __tablename__ = "follows"
+
+    follower_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    following_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    follower = relationship("User", foreign_keys=[follower_id], back_populates="following")
+    following = relationship("User", foreign_keys=[following_id], back_populates="followers")
+
+    __table_args__ = (
+        UniqueConstraint("follower_id", "following_id", name="uq_follows"),
+        Index("ix_follows_follower_id", "follower_id"),
+        Index("ix_follows_following_id", "following_id"),
+    )
 
 
 # ─── Exchange Keys ───────────────────────────────────────────────────────────
@@ -178,6 +210,7 @@ class Post(Base):
     content = Column(Text, nullable=False)
     strategy_id = Column(UUID(as_uuid=True), ForeignKey("strategies.id", ondelete="SET NULL"), nullable=True)
     verified_profit = Column(JSONB, nullable=True)
+    image_urls = Column(JSONB, nullable=True)  # list of image URLs
     like_count = Column(Integer, default=0)
     comment_count = Column(Integer, default=0)
     view_count = Column(Integer, default=0)
@@ -205,7 +238,9 @@ class Comment(Base):
     parent_id = Column(UUID(as_uuid=True), ForeignKey("comments.id", ondelete="CASCADE"), nullable=True)
     content = Column(Text, nullable=False)
     like_count = Column(Integer, default=0)
+    is_deleted = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     post = relationship("Post", back_populates="comments")
     user = relationship("User", back_populates="comments")
@@ -243,6 +278,96 @@ class Bookmark(Base):
     )
 
 
+# ─── Notifications ──────────────────────────────────────────────────────────
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=gen_uuid)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    actor_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    type = Column(String(30), nullable=False)  # like, comment, reply, follow, mention, copy_strategy
+    target_type = Column(String(20), nullable=True)  # post, comment
+    target_id = Column(UUID(as_uuid=True), nullable=True)
+    message = Column(String(500), nullable=False)
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (
+        Index("ix_notifications_user_id", "user_id"),
+        Index("ix_notifications_created_at", "created_at"),
+    )
+
+
+# ─── Reports ────────────────────────────────────────────────────────────────
+
+class Report(Base):
+    __tablename__ = "reports"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=gen_uuid)
+    reporter_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    target_type = Column(String(20), nullable=False)  # post, comment, user
+    target_id = Column(UUID(as_uuid=True), nullable=False)
+    reason = Column(String(50), nullable=False)  # spam, scam, harassment, inappropriate, other
+    description = Column(Text, nullable=True)
+    status = Column(String(20), default="pending")  # pending, reviewed, dismissed
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (
+        Index("ix_reports_status", "status"),
+    )
+
+
+# ─── Blocks ─────────────────────────────────────────────────────────────────
+
+class Block(Base):
+    __tablename__ = "blocks"
+
+    blocker_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    blocked_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("blocker_id", "blocked_id", name="uq_blocks"),
+    )
+
+
+# ─── Badges ─────────────────────────────────────────────────────────────────
+
+class Badge(Base):
+    __tablename__ = "badges"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=gen_uuid)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    type = Column(String(30), nullable=False)
+    # Types: verified_trader, consistent_profit, top_contributor, strategy_master, early_adopter, helpful
+    label = Column(String(50), nullable=False)
+    awarded_at = Column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (
+        Index("ix_badges_user_id", "user_id"),
+        UniqueConstraint("user_id", "type", name="uq_badges_user_type"),
+    )
+
+
+# ─── Post Images ────────────────────────────────────────────────────────────
+
+class PostImage(Base):
+    __tablename__ = "post_images"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=gen_uuid)
+    post_id = Column(UUID(as_uuid=True), ForeignKey("posts.id", ondelete="CASCADE"), nullable=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    filename = Column(String(255), nullable=False)
+    url = Column(String(500), nullable=False)
+    size_bytes = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (
+        Index("ix_post_images_post_id", "post_id"),
+    )
+
+
 # ─── Subscriptions / Payments ────────────────────────────────────────────────
 
 class Subscription(Base):
@@ -273,3 +398,84 @@ class Payment(Base):
     plan = Column(String(20), nullable=False)
     paid_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow)
+
+
+# ─── Points & Levels ────────────────────────────────────────────────────────
+
+class UserPoints(Base):
+    __tablename__ = "user_points"
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    total_points = Column(Integer, default=0)
+    level = Column(Integer, default=1)
+    last_login_bonus = Column(DateTime(timezone=True), nullable=True)
+    login_streak = Column(Integer, default=0)
+    last_login_date = Column(DateTime(timezone=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class PointLog(Base):
+    __tablename__ = "point_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=gen_uuid)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    action = Column(String(30), nullable=False)
+    points = Column(Integer, nullable=False)
+    description = Column(String(200), default="")
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (
+        Index("ix_point_logs_user_id", "user_id"),
+        Index("ix_point_logs_created_at", "created_at"),
+    )
+
+
+# ─── Referrals ─────────────────────────────────────────────────────────────
+
+class Referral(Base):
+    __tablename__ = "referrals"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=gen_uuid)
+    referrer_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    referred_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    code = Column(String(12), nullable=False)
+    rewarded = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (
+        Index("ix_referrals_referrer_id", "referrer_id"),
+    )
+
+
+# ─── Competitions ──────────────────────────────────────────────────────────
+
+class Competition(Base):
+    __tablename__ = "competitions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=gen_uuid)
+    title = Column(String(200), nullable=False)
+    description = Column(Text, default="")
+    start_date = Column(DateTime(timezone=True), nullable=False)
+    end_date = Column(DateTime(timezone=True), nullable=False)
+    prize_description = Column(Text, default="")
+    max_participants = Column(Integer, default=100)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+
+class CompetitionEntry(Base):
+    __tablename__ = "competition_entries"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=gen_uuid)
+    competition_id = Column(UUID(as_uuid=True), ForeignKey("competitions.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    profit_krw = Column(Numeric(18, 2), default=0)
+    profit_pct = Column(Float, default=0)
+    trade_count = Column(Integer, default=0)
+    rank = Column(Integer, nullable=True)
+    joined_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("competition_id", "user_id", name="uq_competition_entry"),
+        Index("ix_competition_entries_competition_id", "competition_id"),
+    )

@@ -5,6 +5,7 @@ Simulates strategy execution on historical OHLCV data.
 import pandas as pd
 import numpy as np
 from dataclasses import dataclass, field
+import math
 from core.strategy_engine import evaluate_strategy
 
 
@@ -32,19 +33,35 @@ class BacktestResult:
     total_bars: int = 0
 
     def to_dict(self) -> dict:
+        # Starlette/FastAPI uses a JSON serializer that rejects NaN/Infinity for compliance.
+        # Our metrics can legitimately produce Infinity (e.g., profit_factor when gross_loss == 0).
+        # Convert non-finite floats to reasonable finite values for JSON responses.
+        def _finite(value: float, *, inf: float, nan: float = 0.0, ndigits: int | None = None) -> float:
+            try:
+                v = float(value)
+            except Exception:
+                v = nan
+            if not math.isfinite(v):
+                if math.isnan(v):
+                    v = nan
+                else:
+                    v = inf
+            return round(v, ndigits) if ndigits is not None else v
+
         return {
-            "total_return_pct": round(self.total_return_pct, 2),
-            "benchmark_return_pct": round(self.benchmark_return_pct, 2),
+            "total_return_pct": _finite(self.total_return_pct, inf=0.0, ndigits=2),
+            "benchmark_return_pct": _finite(self.benchmark_return_pct, inf=0.0, ndigits=2),
             "total_trades": self.total_trades,
             "win_trades": self.win_trades,
             "lose_trades": self.lose_trades,
-            "win_rate": round(self.win_rate, 2),
-            "max_drawdown_pct": round(self.max_drawdown_pct, 2),
-            "sharpe_ratio": round(self.sharpe_ratio, 3),
-            "profit_factor": round(self.profit_factor, 2),
-            "avg_profit_pct": round(self.avg_profit_pct, 2),
-            "avg_loss_pct": round(self.avg_loss_pct, 2),
-            "avg_holding_bars": round(self.avg_holding_bars, 1),
+            "win_rate": _finite(self.win_rate, inf=0.0, ndigits=2),
+            "max_drawdown_pct": _finite(self.max_drawdown_pct, inf=0.0, ndigits=2),
+            "sharpe_ratio": _finite(self.sharpe_ratio, inf=999.0, ndigits=3),
+            # Large sentinel: frontend renders "∞" when profit_factor is very large.
+            "profit_factor": _finite(self.profit_factor, inf=1e9, ndigits=2),
+            "avg_profit_pct": _finite(self.avg_profit_pct, inf=0.0, ndigits=2),
+            "avg_loss_pct": _finite(self.avg_loss_pct, inf=0.0, ndigits=2),
+            "avg_holding_bars": _finite(self.avg_holding_bars, inf=0.0, ndigits=1),
             "equity_curve": self.equity_curve,
             "trades": self.trades,
             "start_date": self.start_date,

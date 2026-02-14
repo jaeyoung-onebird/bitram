@@ -37,3 +37,4 @@ pydantic[email]==2.9.0
 pydantic-settings==2.5.0
 python-multipart==0.0.12
 pytz==2024.1
+anthropic>=0.40.0

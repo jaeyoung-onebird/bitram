@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "mkdir -p .next/standalone/.next && rm -rf .next/standalone/.next/static && cp -R .next/static .next/standalone/.next/static && (mkdir -p /var/www/bitram-next-static 2>/dev/null || true) && (test -w /var/www/bitram-next-static && rsync -a --delete .next/static/ /var/www/bitram-next-static/ || true)",
     "start": "next start",
     "lint": "next lint"
   },

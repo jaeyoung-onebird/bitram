@@ -161,6 +161,19 @@ class UpbitClient:
             params["market"] = market
         return await self._get("/orders", params, auth=True)
 
+    async def wait_order_done(self, order_uuid: str, timeout: float = 15.0) -> dict:
+        """Poll until order is done/cancelled, return final order info with trades."""
+        import time as _time
+        deadline = _time.time() + timeout
+        while _time.time() < deadline:
+            order = await self.get_order(order_uuid)
+            state = order.get("state", "")
+            if state in ("done", "cancel"):
+                return order
+            await asyncio.sleep(0.5)
+        # Timeout — return last state
+        return await self.get_order(order_uuid)
+
     async def verify_keys(self) -> bool:
         """Verify API key validity by checking accounts."""
         try:
@@ -181,7 +194,35 @@ class UpbitClient:
             "1d": "days", "1w": "weeks", "1M": "months",
         }
         api_tf = tf_map.get(timeframe, "minutes/15")
-        candles = await self.get_candles(market, api_tf, count)
+        target = max(1, int(count))
+
+        # Upbit candles API returns up to 200 items per request. If the caller asks
+        # for more, page backwards using the `to` cursor.
+        raw: list[dict] = []
+        to: str | None = None
+        while len(raw) < target:
+            batch_size = min(200, target - len(raw))
+            batch = await self.get_candles(market, api_tf, batch_size, to=to)
+            if not batch:
+                break
+            raw.extend(batch)
+            # The API returns newest -> oldest; the last element is the oldest and
+            # is used as the cursor for the next page.
+            to = batch[-1].get("candle_date_time_utc") or batch[-1].get("candle_date_time_kst")
+            if len(batch) < batch_size:
+                break
+
+        # De-dup by candle timestamp (some `to` cursors can yield overlaps).
+        seen: set[str] = set()
+        deduped: list[dict] = []
+        for c in raw:
+            ts = c.get("candle_date_time_kst") or c.get("candle_date_time_utc") or ""
+            if ts in seen:
+                continue
+            seen.add(ts)
+            deduped.append(c)
+
+        deduped = deduped[:target]
 
         return [{
             "time": c["candle_date_time_kst"],
@@ -190,7 +231,7 @@ class UpbitClient:
             "low": float(c["low_price"]),
             "close": float(c["trade_price"]),
             "volume": float(c["candle_acc_trade_volume"]),
-        } for c in reversed(candles)]
+        } for c in reversed(deduped)]
 
 
 # ─── Public client (no auth needed) ─────────────────────────────────────────

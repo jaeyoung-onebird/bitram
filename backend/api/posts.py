@@ -9,8 +9,10 @@ from sqlalchemy import select, func, update, delete
 from uuid import UUID
 
 from db.database import get_db
-from db.models import User, Post, Comment, Like, Bookmark, Strategy, Bot
-from api.deps import get_current_user
+from db.models import User, Post, Comment, Like, Bookmark, Strategy, Bot, Badge, UserPoints
+from api.deps import get_current_user, get_current_user_optional
+from api.notifications import create_notification
+from core.points import compute_level
 
 router = APIRouter(prefix="/api/posts", tags=["community"])
 
@@ -36,6 +38,8 @@ class AuthorInfo(BaseModel):
     id: str
     nickname: str
     plan: str = "community"
+    level: int = 1
+    level_name: str = "씨앗"
 
 
 class CommentResponse(BaseModel):
@@ -43,6 +47,7 @@ class CommentResponse(BaseModel):
     author: AuthorInfo
     content: str
     like_count: int
+    is_liked: bool = False
     parent_id: str | None
     created_at: str
 
@@ -61,7 +66,7 @@ class PostResponse(BaseModel):
     view_count: int
     is_liked: bool = False
     is_bookmarked: bool = False
-    is_pinned: bool
+    is_pinned: bool = False
     created_at: str
     updated_at: str
 
@@ -76,20 +81,33 @@ class PostListItem(BaseModel):
     view_count: int
     has_strategy: bool
     verified_profit_pct: float | None = None
-    is_pinned: bool
+    is_pinned: bool = False
     created_at: str
 
+
+class BadgeInfo(BaseModel):
+    type: str
+    label: str
 
 class UserProfileResponse(BaseModel):
     id: str
     nickname: str
     plan: str = "community"
     joined_at: str
+    level: int = 1
+    level_name: str = "씨앗"
+    total_points: int = 0
+    next_level_name: str | None = None
+    next_threshold: int | None = None
     post_count: int
     total_likes_received: int
     total_comments: int
     shared_strategies_count: int
     total_copy_count: int
+    badges: list[BadgeInfo] = []
+    follower_count: int = 0
+    following_count: int = 0
+    is_following: bool = False
     recent_posts: list[PostListItem]
 
 
@@ -128,7 +146,7 @@ async def create_post(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if req.category not in ("strategy", "profit", "question", "free"):
+    if req.category not in ("strategy", "profit", "question", "free", "chart", "news", "humor"):
         raise HTTPException(400, "유효하지 않은 카테고리입니다.")
 
     verified_profit = None
@@ -174,6 +192,17 @@ async def create_post(
         verified_profit=verified_profit,
     )
     db.add(post)
+
+    # Award points for posting
+    try:
+        from core.points import award_points
+        await award_points(db, user.id, "first_post", "첫 게시글 작성 보너스")
+        await award_points(db, user.id, "post", f"게시글 작성: {req.title[:30]}")
+        if req.category in ("strategy", "profit") and req.strategy_id:
+            await award_points(db, user.id, "strategy_shared", f"전략 공유: {req.title[:30]}")
+    except Exception:
+        pass
+
     await db.commit()
     await db.refresh(post)
 
@@ -188,7 +217,11 @@ async def list_posts(
     size: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Post, User.nickname, User.plan).join(User, Post.user_id == User.id)
+    stmt = (
+        select(Post, User.nickname, User.plan, UserPoints.total_points)
+        .join(User, Post.user_id == User.id)
+        .outerjoin(UserPoints, UserPoints.user_id == Post.user_id)
+    )
 
     if category:
         stmt = stmt.where(Post.category == category)
@@ -207,7 +240,7 @@ async def list_posts(
     return [
         PostListItem(
             id=str(post.id),
-            author=AuthorInfo(id=str(post.user_id), nickname=nickname, plan=plan),
+            author=_author(post.user_id, nickname, plan, pts),
             category=post.category,
             title=post.title,
             like_count=post.like_count,
@@ -221,7 +254,7 @@ async def list_posts(
             is_pinned=post.is_pinned,
             created_at=str(post.created_at),
         )
-        for post, nickname, plan in rows
+        for post, nickname, plan, pts in rows
     ]
 
 
@@ -242,8 +275,9 @@ async def trending_posts(
     ).label("engagement_score")
 
     stmt = (
-        select(Post, User.nickname, User.plan, engagement_score)
+        select(Post, User.nickname, User.plan, engagement_score, UserPoints.total_points)
         .join(User, Post.user_id == User.id)
+        .outerjoin(UserPoints, UserPoints.user_id == Post.user_id)
         .where(Post.created_at >= seven_days_ago)
         .order_by(engagement_score.desc())
         .limit(10)
@@ -254,7 +288,7 @@ async def trending_posts(
     return [
         TrendingPostItem(
             id=str(post.id),
-            author=AuthorInfo(id=str(post.user_id), nickname=nickname, plan=plan),
+            author=_author(post.user_id, nickname, plan, pts),
             category=post.category,
             title=post.title,
             like_count=post.like_count,
@@ -268,7 +302,7 @@ async def trending_posts(
             engagement_score=float(score),
             created_at=str(post.created_at),
         )
-        for post, nickname, plan, score in rows
+        for post, nickname, plan, score, pts in rows
     ]
 
 
@@ -279,6 +313,7 @@ async def trending_posts(
 @router.get("/user/{user_id}/profile", response_model=UserProfileResponse)
 async def get_user_profile(
     user_id: str,
+    current_user: User | None = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db),
 ):
     """Returns a user's public profile with community stats."""
@@ -347,16 +382,56 @@ async def get_user_profile(
         for post, nickname, plan in recent_rows
     ]
 
+    # Badges
+    from db.models import Follow
+    badge_stmt = select(Badge).where(Badge.user_id == uid)
+    badge_rows = (await db.execute(badge_stmt)).scalars().all()
+    badges = [BadgeInfo(type=b.type, label=b.label) for b in badge_rows]
+
+    # Follower/following counts
+    follower_count = (await db.execute(
+        select(func.count()).select_from(Follow).where(Follow.following_id == uid)
+    )).scalar() or 0
+    following_count = (await db.execute(
+        select(func.count()).select_from(Follow).where(Follow.follower_id == uid)
+    )).scalar() or 0
+
+    # Is current user following this user?
+    is_following = False
+    if current_user:
+        f_exists = (await db.execute(
+            select(Follow).where(Follow.follower_id == current_user.id, Follow.following_id == uid)
+        )).scalar_one_or_none()
+        is_following = f_exists is not None
+
+    # Level & Points
+    up = (await db.execute(
+        select(UserPoints).where(UserPoints.user_id == uid)
+    )).scalar_one_or_none()
+    tp = up.total_points if up else 0
+    lv, lv_name = compute_level(tp)
+    from core.points import next_level_info
+    nli = next_level_info(tp)
+
     return UserProfileResponse(
         id=str(target_user.id),
         nickname=target_user.nickname,
         plan=target_user.plan or "community",
         joined_at=str(target_user.created_at),
+        level=lv,
+        level_name=lv_name,
+        total_points=tp,
+        next_level_name=nli.get("next_level_name"),
+        next_threshold=nli.get("next_threshold"),
         post_count=post_count,
         total_likes_received=total_likes,
         total_comments=total_comments,
         shared_strategies_count=shared_strategies_count,
         total_copy_count=total_copy_count,
+        badges=badges,
+        follower_count=follower_count,
+        following_count=following_count,
+        is_following=is_following,
         recent_posts=recent_posts,
     )
 
@@ -402,30 +477,31 @@ async def strategy_ranking(
     result = await db.execute(stmt)
     rows = result.all()
 
-    # Compute ranking scores and fetch author bot profit
+    # Batch-fetch author bot profits in one query (fix N+1)
+    author_ids = list({row.author_id for _, _, author_id, _ in rows})
+    author_profits: dict[str, float] = {}
+    if author_ids:
+        profit_stmt = (
+            select(Bot.user_id, func.coalesce(func.sum(Bot.total_profit), 0))
+            .where(Bot.user_id.in_(author_ids))
+            .group_by(Bot.user_id)
+        )
+        profit_rows = (await db.execute(profit_stmt)).all()
+        author_profits = {str(uid): float(p) for uid, p in profit_rows}
+
     ranked = []
     for post, nickname, author_id, copy_count in rows:
-        # Extract verified profit percentage
         verified_profit_pct = 0.0
         if post.verified_profit:
             verified_profit_pct = float(post.verified_profit.get("total_return_pct") or 0)
 
         copy_cnt = int(copy_count or 0)
-
-        # Weighted ranking score
         ranking_score = (
             verified_profit_pct * 0.4
             + post.like_count * 0.3
             + copy_cnt * 0.3
         )
-
-        # Author's total bot profit
-        profit_stmt = (
-            select(func.coalesce(func.sum(Bot.total_profit), 0))
-            .where(Bot.user_id == author_id)
-        )
-        profit_result = await db.execute(profit_stmt)
-        author_bot_profit = float(profit_result.scalar() or 0)
+        author_bot_profit = author_profits.get(str(author_id), 0.0)
 
         ranked.append(StrategyRankingItem(
             post_id=str(post.id),
@@ -440,7 +516,6 @@ async def strategy_ranking(
             author_total_bot_profit=author_bot_profit if author_bot_profit else None,
         ))
 
-    # Sort by ranking_score descending
     ranked.sort(key=lambda x: x.ranking_score, reverse=True)
     return ranked
 
@@ -527,6 +602,58 @@ async def toggle_like(
     else:
         db.add(Like(user_id=user.id, target_type="post", target_id=pid))
         await db.execute(update(Post).where(Post.id == pid).values(like_count=Post.like_count + 1))
+        # Notify post author
+        post = await db.get(Post, pid)
+        if post:
+            await create_notification(
+                db, user_id=post.user_id, actor_id=user.id,
+                type="like", target_type="post", target_id=pid,
+                message=f"{user.nickname}님이 회원님의 글을 좋아합니다",
+            )
+            # Award points to post author for receiving a like
+            try:
+                from core.points import award_points
+                await award_points(db, post.user_id, "like_received", f"좋아요 받음: {post.title[:30]}")
+            except Exception:
+                pass
+        await db.commit()
+        return {"liked": True}
+
+
+@router.post("/{post_id}/comments/{comment_id}/like")
+async def toggle_comment_like(
+    post_id: str,
+    comment_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    cid = UUID(comment_id)
+    comment = await db.get(Comment, cid)
+    if not comment or str(comment.post_id) != post_id:
+        raise HTTPException(404, "댓글을 찾을 수 없습니다.")
+
+    stmt = select(Like).where(Like.user_id == user.id, Like.target_type == "comment", Like.target_id == cid)
+    existing = (await db.execute(stmt)).scalar_one_or_none()
+
+    if existing:
+        await db.delete(existing)
+        await db.execute(update(Comment).where(Comment.id == cid).values(like_count=Comment.like_count - 1))
+        await db.commit()
+        return {"liked": False}
+    else:
+        db.add(Like(user_id=user.id, target_type="comment", target_id=cid))
+        await db.execute(update(Comment).where(Comment.id == cid).values(like_count=Comment.like_count + 1))
+        if comment.user_id != user.id:
+            await create_notification(
+                db, user_id=comment.user_id, actor_id=user.id,
+                type="like", target_type="post", target_id=comment.post_id,
+                message=f"{user.nickname}님이 회원님의 댓글을 좋아합니다",
+            )
+            try:
+                from core.points import award_points
+                await award_points(db, comment.user_id, "like_received", "댓글 좋아요 받음")
+            except Exception:
+                pass
         await db.commit()
         return {"liked": True}
 
@@ -557,26 +684,42 @@ async def toggle_bookmark(
 @router.get("/{post_id}/comments", response_model=list[CommentResponse])
 async def list_comments(
     post_id: str,
+    current_user: User | None = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db),
 ):
     stmt = (
-        select(Comment, User.nickname, User.plan)
+        select(Comment, User.nickname, User.plan, UserPoints.total_points)
         .join(User, Comment.user_id == User.id)
+        .outerjoin(UserPoints, UserPoints.user_id == Comment.user_id)
         .where(Comment.post_id == UUID(post_id))
         .order_by(Comment.created_at.asc())
     )
     result = await db.execute(stmt)
     rows = result.all()
+
+    # Batch check liked comment IDs for current user
+    liked_ids: set = set()
+    if current_user:
+        comment_ids = [c.id for c, *_ in rows]
+        if comment_ids:
+            liked_stmt = select(Like.target_id).where(
+                Like.user_id == current_user.id,
+                Like.target_type == "comment",
+                Like.target_id.in_(comment_ids),
+            )
+            liked_ids = {r[0] for r in (await db.execute(liked_stmt)).all()}
+
     return [
         CommentResponse(
             id=str(c.id),
-            author=AuthorInfo(id=str(c.user_id), nickname=nick, plan=plan),
+            author=_author(c.user_id, nick, plan, pts),
             content=c.content,
             like_count=c.like_count,
+            is_liked=c.id in liked_ids,
             parent_id=str(c.parent_id) if c.parent_id else None,
             created_at=str(c.created_at),
         )
-        for c, nick, plan in rows
+        for c, nick, plan, pts in rows
     ]
 
 
@@ -603,17 +746,114 @@ async def create_comment(
 
     # Update comment count
     post.comment_count = (post.comment_count or 0) + 1
+
+    # Notify post author about comment
+    await create_notification(
+        db, user_id=post.user_id, actor_id=user.id,
+        type="comment", target_type="post", target_id=pid,
+        message=f"{user.nickname}님이 회원님의 글에 댓글을 남겼습니다",
+    )
+
+    # If it's a reply, also notify the parent comment author
+    if req.parent_id:
+        parent_comment = await db.get(Comment, UUID(req.parent_id))
+        if parent_comment:
+            await create_notification(
+                db, user_id=parent_comment.user_id, actor_id=user.id,
+                type="reply", target_type="post", target_id=pid,
+                message=f"{user.nickname}님이 회원님의 댓글에 답글을 남겼습니다",
+            )
+
+    # Award points for commenting
+    try:
+        from core.points import award_points
+        await award_points(db, user.id, "comment", f"댓글 작성")
+    except Exception:
+        pass
+
+    # Parse @mentions in comment content
+    import re
+    mentions = re.findall(r"@(\S+)", req.content)
+    if mentions:
+        for mention_nick in mentions[:5]:  # max 5 mentions per comment
+            m_stmt = select(User).where(User.nickname == mention_nick)
+            m_result = await db.execute(m_stmt)
+            mentioned_user = m_result.scalar_one_or_none()
+            if mentioned_user:
+                await create_notification(
+                    db, user_id=mentioned_user.id, actor_id=user.id,
+                    type="mention", target_type="post", target_id=pid,
+                    message=f"{user.nickname}님이 댓글에서 회원님을 언급했습니다",
+                )
+
     await db.commit()
     await db.refresh(comment)
 
+    c_up = (await db.execute(select(UserPoints.total_points).where(UserPoints.user_id == user.id))).scalar_one_or_none()
     return CommentResponse(
         id=str(comment.id),
-        author=AuthorInfo(id=str(user.id), nickname=user.nickname, plan=user.plan),
+        author=_author(user.id, user.nickname, user.plan, c_up),
         content=comment.content,
         like_count=0,
         parent_id=str(comment.parent_id) if comment.parent_id else None,
         created_at=str(comment.created_at),
     )
+
+
+# ─── Comment Edit / Delete ─────────────────────────────────────────────────
+
+class CommentUpdateRequest(BaseModel):
+    content: str
+
+
+@router.put("/{post_id}/comments/{comment_id}", response_model=CommentResponse)
+async def update_comment(
+    post_id: str,
+    comment_id: str,
+    req: CommentUpdateRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    comment = await db.get(Comment, UUID(comment_id))
+    if not comment or str(comment.user_id) != str(user.id):
+        raise HTTPException(404, "댓글을 찾을 수 없습니다.")
+    if comment.is_deleted:
+        raise HTTPException(400, "삭제된 댓글은 수정할 수 없습니다.")
+
+    comment.content = req.content
+    await db.commit()
+    await db.refresh(comment)
+
+    u_up = (await db.execute(select(UserPoints.total_points).where(UserPoints.user_id == user.id))).scalar_one_or_none()
+    return CommentResponse(
+        id=str(comment.id),
+        author=_author(user.id, user.nickname, user.plan, u_up),
+        content=comment.content,
+        like_count=comment.like_count,
+        parent_id=str(comment.parent_id) if comment.parent_id else None,
+        created_at=str(comment.created_at),
+    )
+
+
+@router.delete("/{post_id}/comments/{comment_id}")
+async def delete_comment(
+    post_id: str,
+    comment_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    comment = await db.get(Comment, UUID(comment_id))
+    if not comment or str(comment.user_id) != str(user.id):
+        raise HTTPException(404, "댓글을 찾을 수 없습니다.")
+
+    comment.is_deleted = True
+    comment.content = "(삭제된 댓글입니다)"
+    # Decrement post comment count
+    post = await db.get(Post, UUID(post_id))
+    if post and post.comment_count > 0:
+        post.comment_count -= 1
+    await db.commit()
+    return {"ok": True}
 
 
 # ─── Strategy Copy from Post ────────────────────────────────────────────────
@@ -642,6 +882,19 @@ async def copy_strategy_from_post(
     )
     db.add(new_strategy)
     strategy.copy_count = (strategy.copy_count or 0) + 1
+    # Notify strategy owner
+    await create_notification(
+        db, user_id=strategy.user_id, actor_id=user.id,
+        type="copy_strategy", target_type="post", target_id=post.id,
+        message=f"{user.nickname}님이 회원님의 전략을 복사했습니다",
+    )
+    # Award points to strategy owner and copier
+    try:
+        from core.points import award_points
+        await award_points(db, strategy.user_id, "strategy_copied", f"전략 복사됨: {strategy.name[:30]}")
+        await award_points(db, user.id, "marketplace_copy", f"마켓 전략 복사: {strategy.name[:30]}")
+    except Exception:
+        pass
     await db.commit()
     await db.refresh(new_strategy)
 
@@ -649,6 +902,12 @@ async def copy_strategy_from_post(
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
+
+def _author(user_id, nickname: str, plan: str, total_points) -> AuthorInfo:
+    """Build AuthorInfo with computed level."""
+    lv, lv_name = compute_level(total_points or 0)
+    return AuthorInfo(id=str(user_id), nickname=nickname, plan=plan, level=lv, level_name=lv_name)
+
 
 async def _to_post_response(post: Post, author: User, db: AsyncSession,
                             current_user_id=None, strategy_name=None) -> PostResponse:
@@ -668,9 +927,12 @@ async def _to_post_response(post: Post, author: User, db: AsyncSession,
         strategy = await db.get(Strategy, post.strategy_id)
         strategy_name = strategy.name if strategy else None
 
+    # Fetch author level
+    up = (await db.execute(select(UserPoints.total_points).where(UserPoints.user_id == author.id))).scalar_one_or_none()
+
     return PostResponse(
         id=str(post.id),
-        author=AuthorInfo(id=str(author.id), nickname=author.nickname, plan=author.plan),
+        author=_author(author.id, author.nickname, author.plan, up),
         category=post.category,
         title=post.title,
         content=post.content,

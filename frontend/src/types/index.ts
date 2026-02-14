@@ -3,7 +3,7 @@ export interface User {
   id: string;
   email: string;
   nickname: string;
-  plan: "free" | "basic" | "pro" | "premium";
+  plan: "free" | "basic" | "pro" | "premium" | "admin";
   telegram_chat_id: string | null;
   created_at: string;
 }
@@ -147,6 +147,8 @@ export interface Author {
   id: string;
   nickname: string;
   plan: string;
+  level?: number;
+  level_name?: string;
 }
 
 export interface Post {
@@ -187,20 +189,57 @@ export interface Comment {
   author: Author;
   content: string;
   like_count: number;
+  is_liked: boolean;
   parent_id: string | null;
   created_at: string;
 }
 
 // ─── User Profile ────────────────────────────────────────────────────────────
+export interface BadgeInfo {
+  type: string;
+  label: string;
+}
+
 export interface UserProfile {
   id: string;
   nickname: string;
+  plan: string;
+  level: number;
+  level_name: string;
+  total_points: number;
+  next_level_name: string | null;
+  next_threshold: number | null;
   post_count: number;
-  total_likes: number;
+  total_likes_received: number;
   total_comments: number;
-  strategy_count: number;
-  total_copies: number;
+  shared_strategies_count: number;
+  total_copy_count: number;
+  badges: BadgeInfo[];
+  follower_count: number;
+  following_count: number;
+  is_following: boolean;
   recent_posts: PostListItem[];
+  joined_at: string;
+}
+
+// ─── Notification ───────────────────────────────────────────────────────────
+export interface Notification {
+  id: string;
+  type: string;
+  message: string;
+  actor_nickname: string | null;
+  target_type: string | null;
+  target_id: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+// ─── Search ─────────────────────────────────────────────────────────────────
+export interface UserSearchResult {
+  id: string;
+  nickname: string;
+  plan: string;
+  post_count: number;
   joined_at: string;
 }
 
@@ -210,4 +249,270 @@ export interface DashboardOverview {
   performance: { total_profit: number; total_trades: number; win_rate: number };
   recent_trades: { id: string; side: string; pair: string; price: number; profit: number | null; executed_at: string }[];
   plan: string;
+}
+
+export interface TopTrader {
+  rank: number;
+  user_id: string;
+  nickname: string;
+  plan: string;
+  total_profit: number;
+  trade_count: number;
+  win_rate: number;
+  is_following?: boolean;
+}
+
+export interface HotStrategy {
+  rank: number;
+  strategy_id: string;
+  post_id: string;
+  name: string;
+  pair: string;
+  timeframe: string;
+  copy_count: number;
+  return_pct: number | null;
+  author: string;
+  author_id: string;
+}
+
+export interface FeedItem {
+  type: "profit" | "strategy" | "question" | "post";
+  message: string;
+  title: string;
+  post_id: string;
+  nickname: string;
+  like_count: number;
+  comment_count: number;
+  created_at: string;
+}
+
+export interface StrategyRankingItem {
+  post_id: string;
+  title: string;
+  author: string;
+  author_id: string;
+  verified_profit: Record<string, unknown> | null;
+  like_count: number;
+  comment_count: number;
+  copy_count: number;
+  ranking_score: number;
+  author_total_bot_profit: number | null;
+}
+
+export interface TrendingPost {
+  id: string;
+  author: Author;
+  category: string;
+  title: string;
+  like_count: number;
+  comment_count: number;
+  view_count: number;
+  has_strategy: boolean;
+  verified_profit_pct: number | null;
+  engagement_score: number;
+  created_at: string;
+}
+
+export interface PlatformStats {
+  total_users: number;
+  total_strategies: number;
+  active_bots: number;
+  total_trades: number;
+}
+
+// ─── Market ────────────────────────────────────────────────────────────────
+export interface MarketQuote {
+  market: string;
+  symbol: string;
+  trade_price: number;
+  signed_change_rate_pct: number;
+  change: string;
+  acc_trade_volume_24h: number;
+  timestamp: number | null;
+}
+
+// ─── External Feeds ────────────────────────────────────────────────────────
+export interface ExternalFeedItem {
+  source: string;
+  title: string;
+  title_ko: string;
+  summary?: string;
+  summary_ko?: string;
+  url: string;
+  published_at: string;
+  published_ts?: number | null;
+}
+
+// ─── AI Strategy ────────────────────────────────────────────────────────────
+export interface AIStrategyBacktest {
+  total_return_pct: number;
+  win_rate: number;
+  total_trades: number;
+  max_drawdown_pct: number;
+  sharpe_ratio: number;
+  profit_factor: number;
+}
+
+export interface AIStrategyResult {
+  name: string;
+  description: string;
+  config_json: StrategyConfig;
+  backtest: AIStrategyBacktest;
+}
+
+export interface AIGenerateResponse {
+  pair: string;
+  timeframe: string;
+  style: string;
+  provider?: string;
+  strategies: AIStrategyResult[];
+  total_generated: number;
+  profitable_count: number;
+}
+
+// ─── Points & Level ─────────────────────────────────────────────────────────
+export interface UserPointsInfo {
+  total_points: number;
+  level: number;
+  level_name: string;
+  next_level: number | null;
+  next_level_name: string | null;
+  points_needed: number;
+  next_threshold: number | null;
+  login_streak: number;
+  last_login_date: string | null;
+}
+
+export interface PointLogItem {
+  id: string;
+  action: string;
+  points: number;
+  description: string;
+  created_at: string;
+}
+
+export interface PointLeaderboardItem {
+  rank: number;
+  user_id: string;
+  nickname: string;
+  total_points: number;
+  level: number;
+  level_name: string;
+}
+
+// ─── Onboarding ─────────────────────────────────────────────────────────────
+export interface OnboardingStatus {
+  steps: {
+    first_strategy: boolean;
+    first_backtest: boolean;
+    first_post: boolean;
+    first_follow: boolean;
+    api_key_added: boolean;
+  };
+  completed: number;
+  total: number;
+}
+
+// ─── Referral ───────────────────────────────────────────────────────────────
+export interface ReferralInfo {
+  code: string;
+  link: string;
+}
+
+export interface ReferralStats {
+  total_referrals: number;
+  rewarded: number;
+  code: string;
+}
+
+// ─── Marketplace ────────────────────────────────────────────────────────────
+export interface MarketplaceStrategy {
+  id: string;
+  name: string;
+  description: string;
+  pair: string;
+  timeframe: string;
+  is_public: boolean;
+  copy_count: number;
+  author_nickname: string;
+  author_id: string;
+  backtest_summary: {
+    total_return_pct: number | null;
+    win_rate: number | null;
+    total_trades: number | null;
+    max_drawdown_pct: number | null;
+  } | null;
+  created_at: string;
+}
+
+export interface MarketplaceResponse {
+  items: MarketplaceStrategy[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+// ─── Competition ────────────────────────────────────────────────────────────
+export interface Competition {
+  id: string;
+  title: string;
+  description: string;
+  start_date: string;
+  end_date: string;
+  status: "upcoming" | "active" | "ended";
+  prize_description: string;
+  max_participants: number;
+  participant_count: number;
+  created_at: string;
+}
+
+export interface CompetitionLeaderboardItem {
+  rank: number;
+  user_id: string;
+  nickname: string;
+  profit_krw: number;
+  trade_count: number;
+  joined_at: string;
+}
+
+// ─── Follow Feed ────────────────────────────────────────────────────────────
+export interface FollowFeedItem {
+  type: "new_post" | "strategy_shared" | "profit_verified";
+  post_id: string;
+  title: string;
+  category: string;
+  author: Author;
+  like_count: number;
+  comment_count: number;
+  verified_profit_pct: number | null;
+  created_at: string;
+}
+
+// ─── Admin ───────────────────────────────────────────────────────────────────
+export interface AdminOverview {
+  counts: {
+    users_total: number;
+    users_7d: number;
+    posts_total: number;
+    comments_total: number;
+    strategies_total: number;
+    bots_total: number;
+    active_bots: number;
+    trades_total: number;
+    trades_7d: number;
+  };
+  recent_users: Array<{
+    id: string;
+    email: string;
+    nickname: string;
+    plan: string;
+    created_at: string;
+  }>;
+  recent_posts: Array<{
+    id: string;
+    title: string;
+    category: string;
+    author: string;
+    created_at: string;
+  }>;
 }

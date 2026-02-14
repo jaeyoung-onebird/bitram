@@ -15,6 +15,7 @@ from db.database import get_db
 from db.models import User
 
 security = HTTPBearer()
+optional_security = HTTPBearer(auto_error=False)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 settings = get_settings()
 
@@ -70,6 +71,37 @@ async def get_current_user(
         raise HTTPException(status_code=401, detail="사용자를 찾을 수 없습니다.")
 
     return user
+
+
+async def get_current_admin(
+    user: User = Depends(get_current_user),
+) -> User:
+    if (user.plan or "").lower() != "admin":
+        raise HTTPException(status_code=403, detail="관리자 권한이 필요합니다.")
+    return user
+
+
+async def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_security),
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    if credentials is None:
+        return None
+    try:
+        payload = decode_token(credentials.credentials)
+        if payload.get("type") != "access":
+            return None
+        user_id = payload.get("sub")
+        if not user_id:
+            return None
+        stmt = select(User).where(User.id == UUID(user_id))
+        result = await db.execute(stmt)
+        user = result.scalar_one_or_none()
+        if not user or not user.is_active:
+            return None
+        return user
+    except Exception:
+        return None
 
 
 # ─── No limits (community edition) ──────────────────────────────────────────

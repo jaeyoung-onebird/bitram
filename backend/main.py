@@ -19,6 +19,20 @@ from api.posts import router as posts_router
 from api.dashboard import router as dashboard_router
 from api.ws import router as ws_router
 from api.telegram import router as telegram_router
+from api.follows import router as follows_router
+from api.market import router as market_router
+from api.feeds import router as feeds_router
+from api.admin import router as admin_router
+from api.notifications import router as notifications_router
+from api.search import router as search_router
+from api.moderation import router as moderation_router
+from api.upload import router as upload_router
+from api.onboarding import router as onboarding_router
+from api.points import router as points_router
+from api.referral import router as referral_router
+from api.marketplace import router as marketplace_router
+from api.follow_feed import router as follow_feed_router
+from api.competitions import router as competitions_router
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -36,8 +50,15 @@ async def lifespan(app: FastAPI):
         except Exception:
             pass
 
-    # Start Telegram bot polling
-    if settings.TELEGRAM_BOT_TOKEN:
+    # Seed sample strategies
+    try:
+        from core.seed_strategies import seed_sample_strategies
+        await seed_sample_strategies()
+    except Exception as e:
+        logger.error(f"Failed to seed strategies: {e}")
+
+    # Start Telegram bot polling (disabled temporarily to avoid restart conflicts)
+    if False and settings.TELEGRAM_BOT_TOKEN:
         try:
             from telegram.ext import Application, CommandHandler, CallbackQueryHandler
             from telegram_module.bot import (
@@ -59,11 +80,11 @@ async def lifespan(app: FastAPI):
 
             await tg_app.initialize()
             await tg_app.start()
-            await tg_app.updater.start_polling()
+            await tg_app.updater.start_polling(drop_pending_updates=True)
             logger.info("Telegram bot started polling")
             app.state.tg_app = tg_app
         except Exception as e:
-            logger.error(f"Failed to start Telegram bot: {e}")
+            logger.warning(f"Telegram bot not started (non-fatal): {e}")
 
     yield
 
@@ -108,6 +129,20 @@ app.include_router(posts_router)
 app.include_router(dashboard_router)
 app.include_router(ws_router)
 app.include_router(telegram_router)
+app.include_router(follows_router)
+app.include_router(market_router)
+app.include_router(feeds_router)
+app.include_router(admin_router)
+app.include_router(notifications_router)
+app.include_router(search_router)
+app.include_router(moderation_router)
+app.include_router(upload_router)
+app.include_router(onboarding_router)
+app.include_router(points_router)
+app.include_router(referral_router)
+app.include_router(marketplace_router)
+app.include_router(follow_feed_router)
+app.include_router(competitions_router)
 
 
 @app.get("/")

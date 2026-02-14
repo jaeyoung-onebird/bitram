@@ -417,7 +417,7 @@ export default function NewStrategyPage() {
         <h1 className="text-2xl font-bold">
           {isEditMode ? "전략 수정" : "새 전략 만들기"}
         </h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
           {isEditMode
             ? "기존 전략 설정을 수정하세요."
             : "노코드 빌더로 나만의 매매 전략을 조립하세요."}
@@ -425,7 +425,7 @@ export default function NewStrategyPage() {
       </div>
 
       {editLoading && (
-        <div className="flex items-center justify-center py-6 text-gray-400 text-sm">
+        <div className="flex items-center justify-center py-6 text-slate-400 dark:text-slate-500 text-sm">
           전략 정보를 불러오는 중...
         </div>
       )}
@@ -445,27 +445,27 @@ export default function NewStrategyPage() {
             className={clsx(
               "flex items-center gap-2 px-3 py-2 rounded-lg text-xs whitespace-nowrap transition",
               step === s.num
-                ? "bg-blue-600/20 text-blue-400 border border-blue-500/30"
+                ? "bg-blue-50 text-blue-500 border border-blue-500/30"
                 : s.num < step
                   ? "bg-green-600/10 text-green-400 border border-green-500/20 cursor-pointer"
-                  : "bg-[#111827] text-gray-500 border border-gray-800"
+                  : "bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
             )}
           >
             <span
               className={clsx(
-                "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold",
+                "w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold",
                 step === s.num
-                  ? "bg-blue-600 text-white"
+                  ? "bg-blue-500 text-white"
                   : s.num < step
                     ? "bg-green-600 text-white"
-                    : "bg-gray-700 text-gray-400"
+                    : "bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500"
               )}
             >
               {s.num < step ? <Check className="w-3 h-3" /> : s.num}
             </span>
             <span className="hidden sm:inline">{s.title}</span>
             {i < STEP_LABELS.length - 1 && (
-              <ChevronRight className="w-3 h-3 text-gray-600 ml-1" />
+              <ChevronRight className="w-3 h-3 text-slate-500 dark:text-slate-400 ml-1" />
             )}
           </button>
         ))}
@@ -480,20 +480,20 @@ export default function NewStrategyPage() {
       )}
 
       {/* Step Content */}
-      <div className="bg-[#1a2332] rounded-xl border border-gray-800 p-6">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-700/60 shadow-sm p-6">
         {/* ── Step 1: Coin & Timeframe ────────────────────────────────── */}
         {step === 1 && (
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-bold mb-1">코인 & 타임프레임</h2>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-slate-400 dark:text-slate-500">
                 트레이딩할 종목과 캔들 타임프레임을 선택하세요.
               </p>
             </div>
 
             {/* Strategy Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
                 전략 이름 <span className="text-red-400">*</span>
               </label>
               <input
@@ -501,14 +501,14 @@ export default function NewStrategyPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="예: RSI 과매도 반등 전략"
-                className="w-full px-4 py-2.5 bg-[#111827] border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
                 maxLength={50}
               />
             </div>
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
                 설명 (선택)
               </label>
               <textarea
@@ -516,14 +516,14 @@ export default function NewStrategyPage() {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="전략에 대한 간단한 설명"
                 rows={2}
-                className="w-full px-4 py-2.5 bg-[#111827] border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500 transition resize-none"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500 transition resize-none"
                 maxLength={200}
               />
             </div>
 
             {/* Pair Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
                 코인 (마켓) <span className="text-red-400">*</span>
               </label>
               <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
@@ -534,8 +534,8 @@ export default function NewStrategyPage() {
                     className={clsx(
                       "px-3 py-2 rounded-lg text-sm font-mono transition border",
                       pair === p
-                        ? "bg-blue-600/20 border-blue-500/40 text-blue-400"
-                        : "bg-[#111827] border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-300"
+                        ? "bg-blue-500/15 border-blue-500/40 text-blue-500"
+                        : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:border-gray-600 dark:hover:border-slate-600 hover:text-slate-600 dark:hover:text-slate-300"
                     )}
                   >
                     {p.replace("KRW-", "")}
@@ -546,7 +546,7 @@ export default function NewStrategyPage() {
 
             {/* Timeframe Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
                 타임프레임 <span className="text-red-400">*</span>
               </label>
               <div className="flex flex-wrap gap-2">
@@ -558,7 +558,7 @@ export default function NewStrategyPage() {
                       "px-4 py-2 rounded-lg text-sm transition border",
                       timeframe === tf.value
                         ? "bg-purple-600/20 border-purple-500/40 text-purple-400"
-                        : "bg-[#111827] border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-300"
+                        : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:border-gray-600 dark:hover:border-slate-600 hover:text-slate-600 dark:hover:text-slate-300"
                     )}
                   >
                     {tf.label}
@@ -573,7 +573,7 @@ export default function NewStrategyPage() {
                 onClick={() => setIsPublic(!isPublic)}
                 className={clsx(
                   "relative inline-flex h-6 w-11 items-center rounded-full transition",
-                  isPublic ? "bg-blue-600" : "bg-gray-700"
+                  isPublic ? "bg-blue-500" : "bg-slate-300 dark:bg-slate-600"
                 )}
               >
                 <span
@@ -583,7 +583,7 @@ export default function NewStrategyPage() {
                   )}
                 />
               </button>
-              <span className="text-sm text-gray-300">
+              <span className="text-sm text-slate-600 dark:text-slate-300">
                 커뮤니티에 공개
               </span>
             </div>
@@ -595,22 +595,22 @@ export default function NewStrategyPage() {
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-bold mb-1">진입 조건 설정</h2>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-slate-400 dark:text-slate-500">
                 지표와 조건을 조합하여 매매 신호를 정의하세요.
               </p>
             </div>
 
             {indicatorsLoading ? (
               <div className="flex items-center justify-center py-12">
-                <div className="text-gray-500">지표 목록 로딩 중...</div>
+                <div className="text-slate-500 dark:text-slate-400">지표 목록 로딩 중...</div>
               </div>
             ) : (
               <>
                 {/* Logic Selector */}
                 {conditions.length > 1 && (
-                  <div className="flex items-center gap-3 p-3 bg-[#111827] rounded-lg border border-gray-800">
-                    <Info className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                    <span className="text-sm text-gray-400">
+                  <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <Info className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
+                    <span className="text-sm text-slate-400 dark:text-slate-500">
                       조건 결합 방식:
                     </span>
                     <div className="flex gap-1">
@@ -619,8 +619,8 @@ export default function NewStrategyPage() {
                         className={clsx(
                           "px-3 py-1 rounded text-xs font-bold transition",
                           conditionsLogic === "AND"
-                            ? "bg-blue-600 text-white"
-                            : "bg-gray-700 text-gray-400 hover:text-gray-300"
+                            ? "bg-blue-500 text-white"
+                            : "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 hover:text-slate-700 dark:hover:text-slate-200"
                         )}
                       >
                         AND (모두 충족)
@@ -630,8 +630,8 @@ export default function NewStrategyPage() {
                         className={clsx(
                           "px-3 py-1 rounded text-xs font-bold transition",
                           conditionsLogic === "OR"
-                            ? "bg-blue-600 text-white"
-                            : "bg-gray-700 text-gray-400 hover:text-gray-300"
+                            ? "bg-blue-500 text-white"
+                            : "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 hover:text-slate-700 dark:hover:text-slate-200"
                         )}
                       >
                         OR (하나만 충족)
@@ -650,30 +650,30 @@ export default function NewStrategyPage() {
                         {/* Logic divider between conditions */}
                         {idx > 0 && (
                           <div className="flex items-center gap-3">
-                            <div className="flex-1 border-t border-gray-700" />
+                            <div className="flex-1 border-t border-slate-100 dark:border-slate-800" />
                             <span
                               className={clsx(
                                 "text-xs font-bold px-2 py-0.5 rounded",
                                 conditionsLogic === "AND"
-                                  ? "bg-blue-600/20 text-blue-400"
+                                  ? "bg-blue-50 text-blue-500"
                                   : "bg-orange-600/20 text-orange-400"
                               )}
                             >
                               {conditionsLogic}
                             </span>
-                            <div className="flex-1 border-t border-gray-700" />
+                            <div className="flex-1 border-t border-slate-100 dark:border-slate-800" />
                           </div>
                         )}
 
-                        <div className="p-4 bg-[#111827] rounded-lg border border-gray-800">
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
                           <div className="flex items-center justify-between mb-3">
-                            <span className="text-xs font-bold text-gray-400">
+                            <span className="text-xs font-bold text-slate-400 dark:text-slate-500">
                               조건 {idx + 1}
                             </span>
                             {conditions.length > 1 && (
                               <button
                                 onClick={() => removeCondition(cond.id)}
-                                className="text-gray-500 hover:text-red-400 transition"
+                                className="text-slate-500 dark:text-slate-400 hover:text-red-400 transition"
                                 title="조건 삭제"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -684,7 +684,7 @@ export default function NewStrategyPage() {
                           {/* Row 1: Indicator selection */}
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                             <div>
-                              <label className="block text-[11px] text-gray-500 mb-1">
+                              <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
                                 지표 (Indicator)
                               </label>
                               <select
@@ -692,7 +692,7 @@ export default function NewStrategyPage() {
                                 onChange={(e) =>
                                   handleIndicatorChange(cond.id, e.target.value)
                                 }
-                                className="w-full px-3 py-2 bg-[#0a0e17] border border-gray-700 rounded-lg text-sm text-gray-100 focus:outline-none focus:border-blue-500 transition"
+                                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500 transition"
                               >
                                 <option value="">지표 선택...</option>
                                 {Object.entries(groupedIndicators).map(
@@ -720,7 +720,7 @@ export default function NewStrategyPage() {
                             {/* Output key for multi-output indicators */}
                             {def?.multi_output && (
                               <div>
-                                <label className="block text-[11px] text-gray-500 mb-1">
+                                <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
                                   출력 키 (Output Key)
                                 </label>
                                 <input
@@ -732,7 +732,7 @@ export default function NewStrategyPage() {
                                     })
                                   }
                                   placeholder="예: upper, middle, lower"
-                                  className="w-full px-3 py-2 bg-[#0a0e17] border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-blue-500 transition"
+                                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-800 dark:text-slate-200 placeholder-gray-600 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
                                 />
                               </div>
                             )}
@@ -741,13 +741,13 @@ export default function NewStrategyPage() {
                           {/* Row 2: Params */}
                           {def && def.params.length > 0 && (
                             <div className="mb-3">
-                              <label className="block text-[11px] text-gray-500 mb-1">
+                              <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
                                 파라미터
                               </label>
                               <div className="flex flex-wrap gap-2">
                                 {def.params.map((p) => (
                                   <div key={p} className="flex items-center gap-1.5">
-                                    <span className="text-xs text-gray-400 font-mono">
+                                    <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">
                                       {p}:
                                     </span>
                                     <input
@@ -761,7 +761,7 @@ export default function NewStrategyPage() {
                                           },
                                         })
                                       }
-                                      className="w-20 px-2 py-1.5 bg-[#0a0e17] border border-gray-700 rounded text-sm text-gray-100 focus:outline-none focus:border-blue-500 transition text-center"
+                                      className="w-20 px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500 transition text-center"
                                     />
                                   </div>
                                 ))}
@@ -772,7 +772,7 @@ export default function NewStrategyPage() {
                           {/* Row 3: Operator + Value */}
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <label className="block text-[11px] text-gray-500 mb-1">
+                              <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
                                 연산자
                               </label>
                               <select
@@ -782,7 +782,7 @@ export default function NewStrategyPage() {
                                     operator: e.target.value,
                                   })
                                 }
-                                className="w-full px-3 py-2 bg-[#0a0e17] border border-gray-700 rounded-lg text-sm text-gray-100 focus:outline-none focus:border-blue-500 transition"
+                                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500 transition"
                               >
                                 {OPERATORS.map((op) => (
                                   <option key={op.value} value={op.value}>
@@ -792,7 +792,7 @@ export default function NewStrategyPage() {
                               </select>
                             </div>
                             <div>
-                              <label className="block text-[11px] text-gray-500 mb-1">
+                              <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
                                 비교 값
                               </label>
                               <input
@@ -804,7 +804,7 @@ export default function NewStrategyPage() {
                                   })
                                 }
                                 placeholder="예: 30, 70, 0.5"
-                                className="w-full px-3 py-2 bg-[#0a0e17] border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-blue-500 transition"
+                                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-800 dark:text-slate-200 placeholder-gray-600 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
                               />
                             </div>
                           </div>
@@ -817,7 +817,7 @@ export default function NewStrategyPage() {
                 {/* Add Condition */}
                 <button
                   onClick={addCondition}
-                  className="flex items-center gap-2 px-4 py-2.5 w-full justify-center border border-dashed border-gray-700 rounded-lg text-sm text-gray-400 hover:text-blue-400 hover:border-blue-500/30 transition"
+                  className="flex items-center gap-2 px-4 py-2.5 w-full justify-center border border-dashed border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-400 dark:text-slate-500 hover:text-blue-500 hover:border-blue-500/30 transition"
                 >
                   <Plus className="w-4 h-4" />
                   조건 추가
@@ -832,14 +832,14 @@ export default function NewStrategyPage() {
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-bold mb-1">액션 설정</h2>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-slate-400 dark:text-slate-500">
                 조건 충족 시 실행할 주문 유형과 수량을 설정하세요.
               </p>
             </div>
 
             {/* Action Type */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
                 주문 유형
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -853,7 +853,7 @@ export default function NewStrategyPage() {
                         ? at.value.includes("buy")
                           ? "bg-green-600/15 border-green-500/30 text-green-400"
                           : "bg-red-600/15 border-red-500/30 text-red-400"
-                        : "bg-[#111827] border-gray-700 text-gray-400 hover:border-gray-600"
+                        : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:border-gray-600 dark:hover:border-slate-600"
                     )}
                   >
                     {at.label}
@@ -864,7 +864,7 @@ export default function NewStrategyPage() {
 
             {/* Amount Type */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
                 수량 기준
               </label>
               <div className="flex gap-2">
@@ -873,8 +873,8 @@ export default function NewStrategyPage() {
                   className={clsx(
                     "flex-1 px-4 py-2.5 rounded-lg text-sm transition border",
                     amountType === "percent"
-                      ? "bg-blue-600/20 border-blue-500/30 text-blue-400"
-                      : "bg-[#111827] border-gray-700 text-gray-400 hover:border-gray-600"
+                      ? "bg-blue-500/15 border-blue-500/30 text-blue-500"
+                      : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:border-gray-600 dark:hover:border-slate-600"
                   )}
                 >
                   비율 (%)
@@ -884,8 +884,8 @@ export default function NewStrategyPage() {
                   className={clsx(
                     "flex-1 px-4 py-2.5 rounded-lg text-sm transition border",
                     amountType === "fixed"
-                      ? "bg-blue-600/20 border-blue-500/30 text-blue-400"
-                      : "bg-[#111827] border-gray-700 text-gray-400 hover:border-gray-600"
+                      ? "bg-blue-500/15 border-blue-500/30 text-blue-500"
+                      : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:border-gray-600 dark:hover:border-slate-600"
                   )}
                 >
                   고정 금액 (KRW)
@@ -895,7 +895,7 @@ export default function NewStrategyPage() {
 
             {/* Amount */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
                 {amountType === "percent" ? "주문 비율 (%)" : "주문 금액 (KRW)"}
               </label>
               <div className="relative">
@@ -908,9 +908,9 @@ export default function NewStrategyPage() {
                   }
                   min="0"
                   max={amountType === "percent" ? "100" : undefined}
-                  className="w-full px-4 py-2.5 bg-[#111827] border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500 transition pr-12"
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500 transition pr-12"
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 text-sm">
                   {amountType === "percent" ? "%" : "KRW"}
                 </span>
               </div>
@@ -923,8 +923,8 @@ export default function NewStrategyPage() {
                       className={clsx(
                         "px-3 py-1 rounded text-xs transition",
                         amount === String(v)
-                          ? "bg-blue-600 text-white"
-                          : "bg-[#111827] text-gray-400 border border-gray-700 hover:border-gray-600"
+                          ? "bg-blue-500 text-white"
+                          : "bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700 hover:border-gray-600 dark:hover:border-slate-600"
                       )}
                     >
                       {v}%
@@ -935,15 +935,15 @@ export default function NewStrategyPage() {
             </div>
 
             {/* Summary */}
-            <div className="p-4 bg-[#111827] rounded-lg border border-gray-800">
-              <div className="text-xs text-gray-500 mb-2">액션 요약</div>
-              <p className="text-sm text-gray-300">
+            <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="text-xs text-slate-500 dark:text-slate-400 mb-2">액션 요약</div>
+              <p className="text-sm text-slate-600 dark:text-slate-300">
                 조건 충족 시{" "}
-                <span className="text-blue-400 font-medium">
+                <span className="text-blue-500 font-medium">
                   {ACTION_TYPES.find((a) => a.value === actionType)?.label}
                 </span>
                 ,{" "}
-                <span className="text-blue-400 font-medium">
+                <span className="text-blue-500 font-medium">
                   {amountType === "percent"
                     ? `잔고의 ${amount}%`
                     : `${Number(amount).toLocaleString()} KRW`}
@@ -959,14 +959,14 @@ export default function NewStrategyPage() {
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-bold mb-1">안전 장치 설정</h2>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-slate-400 dark:text-slate-500">
                 리스크 관리를 위한 손절/익절/최대 포지션을 설정하세요.
               </p>
             </div>
 
             {/* Stop Loss */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
                 손절 (Stop Loss) %
               </label>
               <div className="relative">
@@ -977,20 +977,20 @@ export default function NewStrategyPage() {
                   min="0"
                   max="100"
                   step="0.5"
-                  className="w-full px-4 py-2.5 bg-[#111827] border border-gray-700 rounded-lg text-gray-100 focus:outline-none focus:border-blue-500 transition pr-8"
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500 transition pr-8"
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 text-sm">
                   %
                 </span>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 진입가 대비 {Math.abs(parseFloat(stopLoss) || 0)}% 하락 시 자동 손절
               </p>
             </div>
 
             {/* Take Profit */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
                 익절 (Take Profit) %
               </label>
               <div className="relative">
@@ -1001,20 +1001,20 @@ export default function NewStrategyPage() {
                   min="0"
                   max="1000"
                   step="0.5"
-                  className="w-full px-4 py-2.5 bg-[#111827] border border-gray-700 rounded-lg text-gray-100 focus:outline-none focus:border-blue-500 transition pr-8"
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500 transition pr-8"
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 text-sm">
                   %
                 </span>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 진입가 대비 {Math.abs(parseFloat(takeProfit) || 0)}% 상승 시 자동 익절
               </p>
             </div>
 
             {/* Max Position */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
                 최대 포지션 (Max Position) %
               </label>
               <div className="relative">
@@ -1025,13 +1025,13 @@ export default function NewStrategyPage() {
                   min="0"
                   max="100"
                   step="5"
-                  className="w-full px-4 py-2.5 bg-[#111827] border border-gray-700 rounded-lg text-gray-100 focus:outline-none focus:border-blue-500 transition pr-8"
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500 transition pr-8"
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 text-sm">
                   %
                 </span>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 전체 자산의 최대 {Math.abs(parseFloat(maxPosition) || 0)}% 까지만 포지션 보유
               </p>
             </div>
@@ -1039,22 +1039,22 @@ export default function NewStrategyPage() {
             {/* Visual Summary */}
             <div className="grid grid-cols-3 gap-3">
               <div className="p-3 bg-red-500/10 rounded-lg text-center border border-red-500/20">
-                <div className="text-[10px] text-gray-500 mb-1">손절</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">손절</div>
                 <div className="text-lg font-bold text-red-400">
                   -{Math.abs(parseFloat(stopLoss) || 0)}%
                 </div>
               </div>
               <div className="p-3 bg-green-500/10 rounded-lg text-center border border-green-500/20">
-                <div className="text-[10px] text-gray-500 mb-1">익절</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">익절</div>
                 <div className="text-lg font-bold text-green-400">
                   +{Math.abs(parseFloat(takeProfit) || 0)}%
                 </div>
               </div>
               <div className="p-3 bg-blue-500/10 rounded-lg text-center border border-blue-500/20">
-                <div className="text-[10px] text-gray-500 mb-1">
+                <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">
                   최대 포지션
                 </div>
-                <div className="text-lg font-bold text-blue-400">
+                <div className="text-lg font-bold text-blue-500">
                   {Math.abs(parseFloat(maxPosition) || 0)}%
                 </div>
               </div>
@@ -1067,7 +1067,7 @@ export default function NewStrategyPage() {
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-bold mb-1">검토 & 저장</h2>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-slate-400 dark:text-slate-500">
                 설정한 전략을 검토하고 저장하세요.
               </p>
             </div>
@@ -1075,29 +1075,29 @@ export default function NewStrategyPage() {
             {/* Strategy Summary */}
             <div className="space-y-4">
               {/* Basic Info */}
-              <div className="p-4 bg-[#111827] rounded-lg border border-gray-800">
-                <h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">
+              <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-3 uppercase tracking-wider">
                   기본 정보
                 </h3>
                 <div className="grid grid-cols-2 gap-y-2 text-sm">
-                  <span className="text-gray-500">이름</span>
-                  <span className="text-gray-100">{name}</span>
-                  <span className="text-gray-500">종목</span>
-                  <span className="text-gray-100 font-mono">{pair}</span>
-                  <span className="text-gray-500">타임프레임</span>
-                  <span className="text-gray-100">
+                  <span className="text-slate-500 dark:text-slate-400">이름</span>
+                  <span className="text-slate-800 dark:text-slate-100">{name}</span>
+                  <span className="text-slate-500 dark:text-slate-400">종목</span>
+                  <span className="text-slate-800 dark:text-slate-100 font-mono">{pair}</span>
+                  <span className="text-slate-500 dark:text-slate-400">타임프레임</span>
+                  <span className="text-slate-800 dark:text-slate-100">
                     {TIMEFRAMES.find((t) => t.value === timeframe)?.label}
                   </span>
-                  <span className="text-gray-500">공개 여부</span>
-                  <span className="text-gray-100">
+                  <span className="text-slate-500 dark:text-slate-400">공개 여부</span>
+                  <span className="text-slate-800 dark:text-slate-100">
                     {isPublic ? "공개" : "비공개"}
                   </span>
                 </div>
               </div>
 
               {/* Conditions Summary */}
-              <div className="p-4 bg-[#111827] rounded-lg border border-gray-800">
-                <h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">
+              <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-3 uppercase tracking-wider">
                   진입 조건 ({conditions.length}개,{" "}
                   {conditionsLogic === "AND" ? "모두 충족" : "하나만 충족"})
                 </h3>
@@ -1109,16 +1109,16 @@ export default function NewStrategyPage() {
                     return (
                       <div
                         key={c.id}
-                        className="text-sm text-gray-300 flex items-center gap-2"
+                        className="text-sm text-slate-600 dark:text-slate-300 flex items-center gap-2"
                       >
-                        <span className="text-xs text-gray-500 w-5">
+                        <span className="text-xs text-slate-500 dark:text-slate-400 w-5">
                           {idx + 1}.
                         </span>
-                        <span className="text-blue-400 font-mono">
+                        <span className="text-blue-500 font-mono">
                           {c.indicator.toUpperCase()}
                         </span>
                         {Object.keys(c.params).length > 0 && (
-                          <span className="text-gray-500 text-xs">
+                          <span className="text-slate-500 dark:text-slate-400 text-xs">
                             (
                             {Object.entries(c.params)
                               .map(([k, v]) => `${k}=${v}`)
@@ -1144,11 +1144,11 @@ export default function NewStrategyPage() {
               </div>
 
               {/* Action Summary */}
-              <div className="p-4 bg-[#111827] rounded-lg border border-gray-800">
-                <h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">
+              <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-3 uppercase tracking-wider">
                   액션
                 </h3>
-                <p className="text-sm text-gray-300">
+                <p className="text-sm text-slate-600 dark:text-slate-300">
                   {ACTION_TYPES.find((a) => a.value === actionType)?.label} /{" "}
                   {amountType === "percent"
                     ? `잔고의 ${amount}%`
@@ -1157,26 +1157,26 @@ export default function NewStrategyPage() {
               </div>
 
               {/* Safety Summary */}
-              <div className="p-4 bg-[#111827] rounded-lg border border-gray-800">
-                <h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">
+              <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-3 uppercase tracking-wider">
                   안전 장치
                 </h3>
                 <div className="grid grid-cols-3 gap-3 text-sm text-center">
                   <div>
-                    <div className="text-gray-500 text-xs">손절</div>
+                    <div className="text-slate-500 dark:text-slate-400 text-xs">손절</div>
                     <div className="text-red-400 font-bold">
                       -{Math.abs(parseFloat(stopLoss) || 0)}%
                     </div>
                   </div>
                   <div>
-                    <div className="text-gray-500 text-xs">익절</div>
+                    <div className="text-slate-500 dark:text-slate-400 text-xs">익절</div>
                     <div className="text-green-400 font-bold">
                       +{Math.abs(parseFloat(takeProfit) || 0)}%
                     </div>
                   </div>
                   <div>
-                    <div className="text-gray-500 text-xs">최대 포지션</div>
-                    <div className="text-blue-400 font-bold">
+                    <div className="text-slate-500 dark:text-slate-400 text-xs">최대 포지션</div>
+                    <div className="text-blue-500 font-bold">
                       {Math.abs(parseFloat(maxPosition) || 0)}%
                     </div>
                   </div>
@@ -1184,11 +1184,11 @@ export default function NewStrategyPage() {
               </div>
 
               {/* JSON Preview */}
-              <div className="p-4 bg-[#111827] rounded-lg border border-gray-800">
-                <h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">
+              <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-3 uppercase tracking-wider">
                   Config JSON 미리보기
                 </h3>
-                <pre className="text-xs text-gray-400 overflow-x-auto max-h-64 overflow-y-auto font-mono bg-[#0a0e17] p-3 rounded-lg">
+                <pre className="text-xs text-slate-400 dark:text-slate-500 overflow-x-auto max-h-64 overflow-y-auto font-mono bg-white dark:bg-slate-900 p-3 rounded-lg">
                   {JSON.stringify(buildPayload(), null, 2)}
                 </pre>
               </div>
@@ -1205,22 +1205,22 @@ export default function NewStrategyPage() {
           className={clsx(
             "flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition",
             step === 1
-              ? "text-gray-600 cursor-not-allowed"
-              : "text-gray-400 hover:text-white bg-[#1a2332] border border-gray-800 hover:border-gray-700"
+              ? "text-slate-500 dark:text-slate-400 cursor-not-allowed"
+              : "text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:hover:text-slate-100 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm"
           )}
         >
           <ChevronLeft className="w-4 h-4" />
           이전
         </button>
 
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-slate-500 dark:text-slate-400">
           {step} / {STEP_LABELS.length}
         </div>
 
         {step < 5 ? (
           <button
             onClick={goNext}
-            className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition"
+            className="flex items-center gap-2 px-6 py-2.5 bg-blue-500 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition"
           >
             다음
             <ChevronRight className="w-4 h-4" />
