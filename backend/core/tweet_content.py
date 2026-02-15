@@ -104,48 +104,14 @@ def _fmt_억(value: float) -> str:
     return f"{int(value):,}원"
 
 
-# ─── Hashtag Pool ────────────────────────────────────────────────────────
+# ─── Hashtags ────────────────────────────────────────────────────────────
 
-# 유형별 해시태그 풀 (매번 랜덤 2~3개 선택)
-HASHTAG_POOL = {
-    "price_alert": [
-        "#비트코인 #코인시세 #비트램",
-        "#BTC #ETH #업비트시세",
-        "#코인 #암호화폐 #업비트",
-        "#비트코인 #이더리움 #비트램",
-        "#크립토 #코인시세 #자동매매",
-    ],
-    "platform_promo": [
-        "#자동매매 #노코드 #비트램",
-        "#코인봇 #자동매매봇 #업비트",
-        "#비트램 #코인트레이딩 #자동화",
-        "#노코드 #업비트자동매매 #비트램",
-        "#자동매매 #코인투자 #비트램",
-        "#트레이딩봇 #업비트 #비트램",
-    ],
-    "market_analysis": [
-        "#비트코인 #시장분석 #비트램",
-        "#코인분석 #크립토 #자동매매",
-        "#BTC #암호화폐 #비트램",
-        "#비트코인전망 #코인 #비트램",
-    ],
-    "trading_tip": [
-        "#코인투자 #트레이딩팁 #비트램",
-        "#자동매매 #코인공부 #비트램",
-        "#암호화폐 #매매전략 #비트램",
-        "#코인트레이딩 #투자 #비트램",
-    ],
-    "community_highlight": [
-        "#비트램 #코인커뮤니티 #트레이딩",
-        "#비트램 #암호화폐 #커뮤니티",
-    ],
-}
+FIXED_HASHTAGS = "#비트램 #업비트 #노코드 #자동매매 #봇 #코인봇"
 
 
-def _pick_hashtags(content_type: str) -> str:
-    """Pick a random hashtag set for the content type."""
-    pool = HASHTAG_POOL.get(content_type, HASHTAG_POOL["platform_promo"])
-    return random.choice(pool)
+def _pick_hashtags(content_type: str = "") -> str:
+    """Return fixed hashtag string."""
+    return FIXED_HASHTAGS
 
 
 # ─── Template-Based Content ──────────────────────────────────────────────
@@ -410,7 +376,7 @@ async def generate_ai_content(
         "트윗은 반드시 한국어로 작성하세요. "
         "트윗은 280자 이내여야 합니다. "
         "자연스럽고 친근한 톤을 사용하세요. "
-        "해시태그는 1-3개만 사용하세요. "
+        "트윗 끝에 반드시 다음 해시태그를 포함하세요: #비트램 #업비트 #노코드 #자동매매 #봇 #코인봇 "
         "bitram.co.kr 링크를 자연스럽게 포함하세요. "
         "트윗 텍스트만 출력하세요. 부연 설명은 하지 마세요."
     )

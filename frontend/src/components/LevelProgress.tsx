@@ -49,11 +49,11 @@ export default function LevelProgress() {
           <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
             <div
               className="h-full bg-blue-500 rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(100, info.progress)}%` }}
+              style={{ width: `${Math.min(100, info.progress * 100)}%` }}
             />
           </div>
           <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
-            <span>{info.progress.toFixed(1)}%</span>
+            <span>{(info.progress * 100).toFixed(1)}%</span>
             <span>
               다음: Lv.{info.level + 1} {info.next_name}
               {info.points_next !== null && (

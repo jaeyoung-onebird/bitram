@@ -74,3 +74,9 @@ app.conf.beat_schedule = {
 
 # Auto-discover tasks
 app.autodiscover_tasks(["tasks"])
+
+# Explicit imports for reliable task registration
+import tasks.data_tasks  # noqa: F401, E402
+import tasks.twitter_tasks  # noqa: F401, E402
+import tasks.notification_tasks  # noqa: F401, E402
+import tasks.email_tasks  # noqa: F401, E402
