@@ -53,7 +53,8 @@ class Settings(BaseSettings):
     # Comma-separated URLs. Keep empty to disable.
     NEWS_FEED_URLS: str = ""
     X_FEED_URLS: str = ""
-    X_FEED_USERNAMES: str = "whale_alert,WatcherGuru,CryptoQuant_com,100trillionUSD,VitalikButerin,caborakunCH,lookonchain,AltcoinGordon,BitcoinMagazine,coinaborasCH"
+    # 고래/온체인 → 뉴스/미디어 → 인플루언서 → 거래소
+    X_FEED_USERNAMES: str = "whale_alert,lookonchain,CryptoQuant_com,glassnode,WatcherGuru,BitcoinMagazine,Cointelegraph,CoinDesk,theblock__,100trillionUSD,VitalikButerin,CryptoCred,Trader_XO,inversebrah,GCRClassic,MustStopMurad,DegenSpartan,binance,solana,Bybit_Official,upbit_official"
     FEED_TRANSLATION_PROVIDER: str = "claude"  # claude | openai
     FEED_OPENAI_MODEL: str = ""  # optional override for feed translation
     FEED_ANTHROPIC_MODEL: str = "claude-3-haiku-20240307"

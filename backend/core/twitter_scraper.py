@@ -60,11 +60,25 @@ _FEATURES = {
     "standardized_nudges_misinfo": True,
     "tweet_awards_web_tipping_enabled": False,
     "view_counts_everywhere_api_enabled": True,
+    # 2026-02 추가 필수 features
+    "highlights_tweets_tab_ui_enabled": True,
+    "responsive_web_twitter_article_notes_tab_enabled": True,
+    "hidden_profile_subscriptions_enabled": True,
+    "subscriptions_verification_info_is_identity_verified_enabled": True,
+    "subscriptions_verification_info_verified_since_enabled": True,
+    "subscriptions_feature_can_gift_premium": True,
+    "rweb_video_timestamps_enabled": True,
+    "creator_subscriptions_quote_tweet_preview_enabled": True,
+    "graphql_is_translatable_rweb_tweet_is_translatable_enabled": True,
 }
 
-# 캐시: 5분 TTL
+class RateLimitError(Exception):
+    pass
+
+
+# 캐시: 10분 TTL
 _cache: dict[str, tuple[float, list[dict]]] = {}
-_CACHE_TTL = 300  # 5분
+_CACHE_TTL = 600  # 10분 (계정 많으면 수집에 시간 소요)
 
 # ct0 토큰 캐시
 _ct0_cache: dict[str, tuple[float, str]] = {}
@@ -138,6 +152,9 @@ async def _graphql_get(
     }
 
     resp = await client.get(url, headers=headers, follow_redirects=True, timeout=15)
+    if resp.status_code == 429:
+        logger.warning("Twitter GraphQL %s: rate limited (429)", operation)
+        raise RateLimitError("429 rate limited")
     if resp.status_code != 200:
         logger.error("Twitter GraphQL %s returned %s: %s", operation, resp.status_code, resp.text[:300])
         return {}
@@ -299,8 +316,13 @@ async def fetch_multiple_users_tweets(
             logger.error("Cannot fetch tweets: no ct0 token")
             return []
 
-        for username in usernames:
+        import asyncio as _aio
+        for idx, username in enumerate(usernames):
             try:
+                # Rate limit 방지: 2번째 유저부터 1.5초 딜레이
+                if idx > 0:
+                    await _aio.sleep(1.5)
+
                 user_id = await _resolve_user_id(client, auth_token, ct0, username)
                 if not user_id:
                     continue
@@ -317,6 +339,10 @@ async def fetch_multiple_users_tweets(
                 data = await _graphql_get(client, auth_token, ct0, query_id, "UserTweets", variables)
                 tweets = _parse_tweets(data)
                 all_tweets.extend(tweets[:per_user])
+                logger.info("Fetched %d tweets from @%s", len(tweets[:per_user]), username)
+            except RateLimitError:
+                logger.warning("Rate limited at @%s (idx=%d), stopping early with %d tweets", username, idx, len(all_tweets))
+                break
             except Exception as e:
                 logger.warning("Failed to fetch tweets for @%s: %s", username, e)
                 continue
