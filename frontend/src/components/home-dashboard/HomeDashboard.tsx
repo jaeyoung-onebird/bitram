@@ -190,6 +190,7 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
   const [news, setNews] = useState<ExternalFeedItem[]>([]);
   const [xFeed, setXFeed] = useState<ExternalFeedItem[]>([]);
   const [xConfigured, setXConfigured] = useState<boolean>(true);
+  const [xAccounts, setXAccounts] = useState<Array<{ username: string; url: string }>>([]);
 
   const [onboarding, setOnboarding] = useState<OnboardingStatus | null>(null);
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
@@ -225,9 +226,10 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
   const refreshXFeed = async () => {
     const xf = await api
       .getXFeed(20, true)
-      .catch(() => ({ items: [] as ExternalFeedItem[], configured: true }));
+      .catch(() => ({ items: [] as ExternalFeedItem[], configured: true, accounts: [] as Array<{ username: string; url: string }> }));
     setXFeed((xf as any).items || []);
     setXConfigured(Boolean((xf as any).configured));
+    setXAccounts((xf as any).accounts || []);
   };
 
   const refreshPrivate = async () => {
@@ -688,7 +690,29 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
                   백엔드 `.env`에 `X_FEED_URLS`(콤마로 여러개) 설정하면 여기에 표시됩니다.
                 </div>
               ) : xFeed.length === 0 ? (
-                <div className="text-sm text-slate-500 dark:text-slate-400">{loading ? "불러오는 중..." : "피드 데이터가 없습니다."}</div>
+                loading ? (
+                  <div className="text-sm text-slate-500 dark:text-slate-400">불러오는 중...</div>
+                ) : xAccounts.length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="text-xs text-slate-400 dark:text-slate-500 mb-1">추천 크립토 계정</div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {xAccounts.slice(0, 10).map((acc) => (
+                        <a
+                          key={acc.username}
+                          href={acc.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-2 p-2 rounded-lg bg-slate-50/80 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-500/30 hover:shadow-sm transition"
+                        >
+                          <span className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-black text-slate-500 dark:text-slate-400">𝕏</span>
+                          <span className="text-xs font-medium text-slate-600 dark:text-slate-300 truncate">@{acc.username}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-slate-500 dark:text-slate-400">피드 데이터가 없습니다.</div>
+                )
               ) : (
                 xFeed.slice(0, 5).map((x, i) => (
                   <a
@@ -703,7 +727,6 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
                       <div className="text-sm text-slate-500 dark:text-slate-400">{timeAgo(x.published_ts ?? x.published_at)}</div>
                     </div>
                     <div className="mt-1 text-sm font-bold text-slate-700 dark:text-slate-200 line-clamp-1">{x.title_ko || x.title}</div>
-                    {/* Keep dashboard cards compact so News/X blocks align visually */}
                   </a>
                 ))
               )}

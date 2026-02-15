@@ -274,7 +274,7 @@ class ApiClient {
     );
   }
   getXFeed(limit: number = 10, translate: boolean = true) {
-    return this.request<{ items: import("@/types").ExternalFeedItem[]; configured: boolean }>(
+    return this.request<{ items: import("@/types").ExternalFeedItem[]; configured: boolean; accounts?: Array<{ username: string; url: string }> }>(
       `/api/feeds/x?limit=${limit}&translate=${translate ? 1 : 0}`
     );
   }

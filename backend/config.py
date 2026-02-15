@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     TWITTER_ACCESS_TOKEN_SECRET: str = ""
     TWITTER_BEARER_TOKEN: str = ""
     TWITTER_BOT_ENABLED: bool = False
+    TWITTER_AUTH_TOKEN: str = ""  # 쿠키 auth_token (X 피드 스크래핑용)
 
     # Feeds (RSS/Atom)
     # Comma-separated URLs. Keep empty to disable.
