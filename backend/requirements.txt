@@ -31,6 +31,9 @@ ta==0.11.0
 # Telegram
 python-telegram-bot==21.0
 
+# Twitter
+tweepy>=4.14.0
+
 # Utils
 python-dotenv==1.0.1
 pydantic[email]==2.9.0
@@ -38,3 +41,12 @@ pydantic-settings==2.5.0
 python-multipart==0.0.12
 pytz==2024.1
 anthropic>=0.40.0
+
+# XSS Prevention
+bleach==6.2.0
+
+# Email
+aiosmtplib==3.0.2
+
+# Error Monitoring
+sentry-sdk[fastapi]==2.19.2

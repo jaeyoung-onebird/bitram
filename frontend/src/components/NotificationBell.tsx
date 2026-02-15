@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import RealtimeNotifications from "@/components/RealtimeNotifications";
 import type { Notification } from "@/types";
 
 function timeAgo(dateStr: string): string {
@@ -32,6 +33,18 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  const refreshUnreadCount = useCallback(() => {
+    api.getUnreadCount().then((r) => setUnread(r.count)).catch(() => {});
+  }, []);
+
+  const handleNewNotification = useCallback(() => {
+    refreshUnreadCount();
+    // If panel is open, refresh the list too
+    if (open) {
+      api.getNotifications(1).then(setNotifications).catch(() => {});
+    }
+  }, [refreshUnreadCount, open]);
 
   useEffect(() => {
     let mounted = true;
@@ -75,6 +88,7 @@ export default function NotificationBell() {
 
   return (
     <div className="relative" ref={ref}>
+      <RealtimeNotifications onNewNotification={handleNewNotification} />
       <button
         onClick={() => setOpen(!open)}
         className="relative p-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition"

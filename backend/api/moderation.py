@@ -8,8 +8,8 @@ from sqlalchemy import select, delete, update, func
 from uuid import UUID
 
 from db.database import get_db
-from db.models import User, Post, Comment, Report, Block, Badge, Notification
-from api.deps import get_current_user, get_current_admin
+from db.models import User, Post, Comment, Report, Block, Badge, Notification, ModerationAction
+from api.deps import get_current_user, get_current_admin, get_current_moderator
 
 router = APIRouter(prefix="/api/moderation", tags=["moderation"])
 
@@ -229,3 +229,160 @@ async def get_user_badges(
         {"type": b.type, "label": b.label, "awarded_at": str(b.awarded_at)}
         for b in rows
     ]
+
+
+# ─── Moderation Queue (Moderator+) ────────────────────────────────────────
+
+@router.get("/queue")
+async def moderation_queue(
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=50),
+    moderator: User = Depends(get_current_moderator),
+    db: AsyncSession = Depends(get_db),
+):
+    """Pending reports for moderators to review."""
+    stmt = (
+        select(Report, User.nickname)
+        .join(User, Report.reporter_id == User.id)
+        .where(Report.status == "pending")
+        .order_by(Report.created_at.asc())
+        .offset((page - 1) * size)
+        .limit(size)
+    )
+    rows = (await db.execute(stmt)).all()
+
+    total = (await db.execute(
+        select(func.count()).select_from(Report).where(Report.status == "pending")
+    )).scalar() or 0
+
+    return {
+        "total": total,
+        "items": [
+            {
+                "id": str(r.id),
+                "reporter": nick,
+                "target_type": r.target_type,
+                "target_id": str(r.target_id),
+                "reason": r.reason,
+                "description": r.description,
+                "status": r.status,
+                "created_at": str(r.created_at),
+            }
+            for r, nick in rows
+        ],
+    }
+
+
+# ─── Moderation Action (Moderator+) ───────────────────────────────────────
+
+class ModerationActionRequest(BaseModel):
+    report_id: str
+    action_type: str  # warn, mute, delete, dismiss
+    reason: str | None = None
+
+
+@router.post("/action")
+async def take_moderation_action(
+    req: ModerationActionRequest,
+    moderator: User = Depends(get_current_moderator),
+    db: AsyncSession = Depends(get_db),
+):
+    if req.action_type not in ("warn", "mute", "delete", "dismiss"):
+        raise HTTPException(400, "유효하지 않은 조치입니다.")
+
+    report = await db.get(Report, UUID(req.report_id))
+    if not report:
+        raise HTTPException(404, "신고를 찾을 수 없습니다.")
+
+    # Update report status
+    report.status = "reviewed" if req.action_type != "dismiss" else "dismissed"
+
+    # Determine target user
+    target_user_id = None
+    if report.target_type == "post":
+        post = await db.get(Post, report.target_id)
+        if post:
+            target_user_id = post.user_id
+            if req.action_type == "delete":
+                await db.delete(post)
+    elif report.target_type == "comment":
+        comment = await db.get(Comment, report.target_id)
+        if comment:
+            target_user_id = comment.user_id
+            if req.action_type == "delete":
+                comment.is_deleted = True
+                comment.content = "(모더레이터에 의해 삭제된 댓글입니다)"
+    elif report.target_type == "user":
+        target_user_id = report.target_id
+
+    # Record moderation action
+    action = ModerationAction(
+        moderator_id=moderator.id,
+        report_id=report.id,
+        action_type=req.action_type,
+        target_user_id=target_user_id,
+        target_type=report.target_type,
+        target_id=report.target_id,
+        reason=req.reason or report.reason,
+    )
+    db.add(action)
+    await db.commit()
+
+    return {"ok": True, "message": f"조치가 완료되었습니다: {req.action_type}"}
+
+
+# ─── Moderation Action History (Admin) ─────────────────────────────────────
+
+@router.get("/actions/history")
+async def moderation_history(
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=50),
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    stmt = (
+        select(ModerationAction, User.nickname)
+        .join(User, ModerationAction.moderator_id == User.id)
+        .order_by(ModerationAction.created_at.desc())
+        .offset((page - 1) * size)
+        .limit(size)
+    )
+    rows = (await db.execute(stmt)).all()
+
+    return [
+        {
+            "id": str(a.id),
+            "moderator": nick,
+            "action_type": a.action_type,
+            "target_type": a.target_type,
+            "target_id": str(a.target_id),
+            "reason": a.reason,
+            "created_at": str(a.created_at),
+        }
+        for a, nick in rows
+    ]
+
+
+# ─── User Role Management (Admin) ─────────────────────────────────────────
+
+class ChangeRoleRequest(BaseModel):
+    role: str  # user, moderator, admin
+
+
+@router.post("/admin/user/{user_id}/role")
+async def change_user_role(
+    user_id: str,
+    req: ChangeRoleRequest,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    if req.role not in ("user", "moderator", "admin"):
+        raise HTTPException(400, "유효하지 않은 역할입니다.")
+
+    target = await db.get(User, UUID(user_id))
+    if not target:
+        raise HTTPException(404, "사용자를 찾을 수 없습니다.")
+
+    target.role = req.role
+    await db.commit()
+    return {"ok": True, "message": f"{target.nickname}님의 역할이 '{req.role}'로 변경되었습니다."}

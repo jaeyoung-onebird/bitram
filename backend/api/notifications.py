@@ -24,7 +24,8 @@ async def create_notification(
     target_type: str | None = None,
     target_id: UUID | None = None,
 ):
-    """Helper to create a notification. Skip if actor == user (self-action)."""
+    """Helper to create a notification. Skip if actor == user (self-action).
+    Also sends email notification if user preferences allow it."""
     if actor_id and str(actor_id) == str(user_id):
         return
     notif = Notification(
@@ -36,6 +37,34 @@ async def create_notification(
         message=message,
     )
     db.add(notif)
+
+    # Check email notification preferences and send email if enabled
+    try:
+        from db.models import UserNotificationPreference
+        prefs_stmt = select(UserNotificationPreference).where(
+            UserNotificationPreference.user_id == user_id
+        )
+        prefs = (await db.execute(prefs_stmt)).scalar_one_or_none()
+
+        should_email = False
+        if prefs:
+            pref_map = {
+                "like": prefs.email_on_like,
+                "comment": prefs.email_on_comment,
+                "reply": prefs.email_on_comment,
+                "mention": prefs.email_on_comment,
+                "follow": prefs.email_on_follow,
+                "dm": prefs.email_on_dm,
+            }
+            should_email = pref_map.get(type, False)
+
+        if should_email:
+            user = await db.get(User, user_id)
+            if user and user.email_verified:
+                from tasks.email_tasks import send_notification_email_task
+                send_notification_email_task.delay(user.email, user.nickname, type, message)
+    except Exception:
+        pass  # Email notification is best-effort
 
 
 @router.get("")

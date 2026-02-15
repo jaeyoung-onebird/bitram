@@ -35,10 +35,18 @@ class Settings(BaseSettings):
     ANTHROPIC_MODEL: str = "claude-3-haiku-20240307"
     # AI (OpenAI)
     OPENAI_API_KEY: str = ""
-    OPENAI_MODEL: str = "gpt-5-nano"
+    OPENAI_MODEL: str = "gpt-4o-mini"
 
     # Telegram
     TELEGRAM_BOT_TOKEN: str = ""
+
+    # Twitter Bot
+    TWITTER_API_KEY: str = ""
+    TWITTER_API_SECRET: str = ""
+    TWITTER_ACCESS_TOKEN: str = ""
+    TWITTER_ACCESS_TOKEN_SECRET: str = ""
+    TWITTER_BEARER_TOKEN: str = ""
+    TWITTER_BOT_ENABLED: bool = False
 
     # Feeds (RSS/Atom)
     # Comma-separated URLs. Keep empty to disable.
@@ -47,6 +55,16 @@ class Settings(BaseSettings):
     FEED_TRANSLATION_PROVIDER: str = "claude"  # claude | openai
     FEED_OPENAI_MODEL: str = ""  # optional override for feed translation
     FEED_ANTHROPIC_MODEL: str = "claude-3-haiku-20240307"
+
+    # Email (SMTP)
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = "noreply@bitram.co.kr"
+
+    # Sentry
+    SENTRY_DSN: str = ""
 
     # App
     FRONTEND_URL: str = "http://localhost:3000"

@@ -77,7 +77,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <Icon className="h-4 w-4" aria-hidden="true" />
                   <span className="hidden lg:inline">{item.label}</span>
                   <span className="lg:hidden sr-only">{item.label}</span>
-                </Link>
+                                  </Link>
               );
             })}
           </nav>
@@ -139,7 +139,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       : "text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-300"
                   }`}
                 >
-                  <Icon aria-hidden="true" className={`h-4 w-4 ${active ? "drop-shadow-[0_0_8px_rgba(49,130,246,0.5)]" : ""}`} />
+                  <span className="relative">
+                    <Icon aria-hidden="true" className={`h-4 w-4 ${active ? "drop-shadow-[0_0_8px_rgba(49,130,246,0.5)]" : ""}`} />
+                                      </span>
                   <span className="truncate text-xs font-medium leading-none whitespace-nowrap">
                     {item.label}
                   </span>

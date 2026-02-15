@@ -33,9 +33,30 @@ from api.referral import router as referral_router
 from api.marketplace import router as marketplace_router
 from api.follow_feed import router as follow_feed_router
 from api.competitions import router as competitions_router
+from api.dm import router as dm_router
+from api.communities import router as communities_router
+from api.notification_prefs import router as notification_prefs_router
+from api.attendance import router as attendance_router
+from api.quests import router as quests_router
+from api.series import router as series_router
+from api.og import router as og_router
+from api.twitter import router as twitter_router
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
+
+# Sentry initialization
+if settings.SENTRY_DSN:
+    try:
+        import sentry_sdk
+        sentry_sdk.init(
+            dsn=settings.SENTRY_DSN,
+            traces_sample_rate=0.1,
+            environment=settings.APP_ENV,
+        )
+        logger.info("Sentry initialized")
+    except Exception as e:
+        logger.warning(f"Sentry init failed: {e}")
 
 
 @asynccontextmanager
@@ -143,6 +164,14 @@ app.include_router(referral_router)
 app.include_router(marketplace_router)
 app.include_router(follow_feed_router)
 app.include_router(competitions_router)
+app.include_router(dm_router)
+app.include_router(communities_router)
+app.include_router(notification_prefs_router)
+app.include_router(attendance_router)
+app.include_router(quests_router)
+app.include_router(series_router)
+app.include_router(og_router)
+app.include_router(twitter_router)
 
 
 @app.get("/")

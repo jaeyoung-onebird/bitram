@@ -4,7 +4,7 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
 import { useToast } from "@/components/Toast";
-import type { ExchangeKey, UserPointsInfo, PointLogItem, ReferralInfo, ReferralStats } from "@/types";
+import type { ExchangeKey, UserPointsInfo, PointLogItem, ReferralInfo, ReferralStats, NotificationPreferences } from "@/types";
 import {
   User as UserIcon,
   Lock,
@@ -18,6 +18,11 @@ import {
   Bot,
   ReceiptText,
   FileText,
+  Bell,
+  Mail,
+  CheckCircle,
+  Globe,
+  ExternalLink,
 } from "lucide-react";
 
 /* ─────────────────────── Profile Section ─────────────────────── */
@@ -25,22 +30,43 @@ function ProfileSection() {
   const { user, updateUser } = useAuthStore();
   const [editing, setEditing] = useState(false);
   const [nickname, setNickname] = useState(user?.nickname || "");
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || "");
+  const [bio, setBio] = useState(user?.bio || "");
+  const [socialTwitter, setSocialTwitter] = useState(user?.social_links?.twitter || "");
+  const [socialGithub, setSocialGithub] = useState(user?.social_links?.github || "");
+  const [socialBlog, setSocialBlog] = useState(user?.social_links?.blog || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [resending, setResending] = useState(false);
 
   const handleSave = async () => {
     const nick = nickname.trim();
-    if (!nick || nick === user?.nickname) {
-      setEditing(false);
+    if (!nick) {
+      setError("닉네임을 입력해주세요.");
       return;
     }
     setSaving(true);
     setError("");
     try {
-      const res = await api.updateProfile({ nickname: nick });
-      updateUser({ nickname: res.nickname });
-      setSuccess("닉네임이 변경되었습니다.");
+      const socialLinks: Record<string, string> = {};
+      if (socialTwitter.trim()) socialLinks.twitter = socialTwitter.trim();
+      if (socialGithub.trim()) socialLinks.github = socialGithub.trim();
+      if (socialBlog.trim()) socialLinks.blog = socialBlog.trim();
+
+      const res = await api.updateProfile({
+        nickname: nick,
+        avatar_url: avatarUrl.trim() || undefined,
+        bio: bio.trim() || undefined,
+        social_links: Object.keys(socialLinks).length > 0 ? socialLinks : undefined,
+      });
+      updateUser({
+        nickname: res.nickname,
+        avatar_url: res.avatar_url,
+        bio: res.bio,
+        social_links: res.social_links,
+      });
+      setSuccess("프로필이 저장되었습니다.");
       setEditing(false);
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
@@ -50,11 +76,46 @@ function ProfileSection() {
     }
   };
 
+  const handleResendVerification = async () => {
+    setResending(true);
+    setError("");
+    try {
+      await api.resendVerification();
+      setSuccess("인증 메일이 재발송되었습니다. 이메일을 확인해주세요.");
+      setTimeout(() => setSuccess(""), 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "인증 메일 발송에 실패했습니다.");
+    } finally {
+      setResending(false);
+    }
+  };
+
+  const startEditing = () => {
+    setNickname(user?.nickname || "");
+    setAvatarUrl(user?.avatar_url || "");
+    setBio(user?.bio || "");
+    setSocialTwitter(user?.social_links?.twitter || "");
+    setSocialGithub(user?.social_links?.github || "");
+    setSocialBlog(user?.social_links?.blog || "");
+    setEditing(true);
+    setError("");
+  };
+
   return (
     <section className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-700/60 rounded-xl shadow-sm p-6 space-y-4">
-      <div className="flex items-center gap-2">
-        <UserIcon className="h-5 w-5 text-blue-500" />
-        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">프로필</h2>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <UserIcon className="h-5 w-5 text-blue-500" />
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">프로필</h2>
+        </div>
+        {!editing && (
+          <button
+            onClick={startEditing}
+            className="text-sm text-blue-500 hover:text-blue-600 transition"
+          >
+            편집
+          </button>
+        )}
       </div>
 
       {success && (
@@ -64,52 +125,199 @@ function ProfileSection() {
         <div className="p-2.5 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-700 rounded-lg text-xs text-rose-600">{error}</div>
       )}
 
-      {/* Email */}
+      {/* Email + Verification Status */}
       <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
         <div>
           <div className="text-sm text-slate-400 dark:text-slate-500 mb-0.5">이메일</div>
-          <div className="text-base text-slate-700 dark:text-slate-200">{user?.email}</div>
+          <div className="flex items-center gap-2">
+            <span className="text-base text-slate-700 dark:text-slate-200">{user?.email}</span>
+            {user?.email_verified ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 text-emerald-600 dark:text-emerald-400 text-xs font-medium rounded-full">
+                <CheckCircle className="h-3 w-3" />
+                인증됨
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 text-amber-600 dark:text-amber-400 text-xs font-medium rounded-full">
+                <Mail className="h-3 w-3" />
+                미인증
+              </span>
+            )}
+          </div>
         </div>
-        <span className="text-sm text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">변경불가</span>
+        <div className="flex items-center gap-2">
+          {!user?.email_verified && (
+            <button
+              onClick={handleResendVerification}
+              disabled={resending}
+              className="text-sm text-amber-500 hover:text-amber-600 disabled:opacity-50 transition"
+            >
+              {resending ? "발송 중..." : "재발송"}
+            </button>
+          )}
+          <span className="text-sm text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">변경불가</span>
+        </div>
       </div>
 
       {/* Nickname */}
-      <div className="flex items-center justify-between py-3">
+      <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
         <div className="flex-1">
           <div className="text-sm text-slate-400 dark:text-slate-500 mb-0.5">닉네임</div>
           {editing ? (
-            <div className="flex items-center gap-2 mt-1">
-              <input
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                maxLength={50}
-                className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-base text-slate-700 dark:text-slate-200 focus:outline-none focus:border-blue-500 transition"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSave();
-                  if (e.key === "Escape") setEditing(false);
-                }}
-              />
-              <button onClick={handleSave} disabled={saving} className="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 disabled:opacity-50 transition">
-                {saving ? "저장 중..." : "저장"}
-              </button>
-              <button onClick={() => setEditing(false)} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm font-medium rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition">
-                취소
-              </button>
-            </div>
+            <input
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              maxLength={50}
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-base text-slate-700 dark:text-slate-200 focus:outline-none focus:border-blue-500 transition mt-1"
+              placeholder="닉네임을 입력하세요"
+            />
           ) : (
             <div className="text-base text-slate-700 dark:text-slate-200">{user?.nickname}</div>
           )}
         </div>
-        {!editing && (
-          <button
-            onClick={() => { setNickname(user?.nickname || ""); setEditing(true); setError(""); }}
-            className="text-sm text-blue-500 hover:text-blue-600 transition"
-          >
-            변경
-          </button>
+      </div>
+
+      {/* Avatar URL */}
+      <div className="py-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="text-sm text-slate-400 dark:text-slate-500 mb-0.5">아바타 URL</div>
+        {editing ? (
+          <div className="space-y-2 mt-1">
+            <input
+              value={avatarUrl}
+              onChange={(e) => setAvatarUrl(e.target.value)}
+              maxLength={500}
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-base text-slate-700 dark:text-slate-200 focus:outline-none focus:border-blue-500 transition"
+              placeholder="https://example.com/avatar.png"
+            />
+            <div className="text-xs text-slate-400 dark:text-slate-500 text-right">{avatarUrl.length}/500</div>
+            {avatarUrl.trim() && (
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-slate-400 dark:text-slate-500">미리보기:</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={avatarUrl.trim()}
+                  alt="아바타 미리보기"
+                  className="w-12 h-12 rounded-full object-cover border border-slate-200 dark:border-slate-700"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  onLoad={(e) => { (e.target as HTMLImageElement).style.display = "block"; }}
+                />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            {user?.avatar_url ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={user.avatar_url}
+                  alt="아바타"
+                  className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
+                <span className="text-sm text-slate-500 dark:text-slate-400 truncate max-w-xs">{user.avatar_url}</span>
+              </>
+            ) : (
+              <span className="text-sm text-slate-400 dark:text-slate-500">설정되지 않음</span>
+            )}
+          </div>
         )}
       </div>
+
+      {/* Bio */}
+      <div className="py-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="text-sm text-slate-400 dark:text-slate-500 mb-0.5">자기소개</div>
+        {editing ? (
+          <div className="mt-1">
+            <textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              maxLength={200}
+              rows={3}
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-base text-slate-700 dark:text-slate-200 focus:outline-none focus:border-blue-500 transition resize-none"
+              placeholder="간단한 자기소개를 작성해주세요"
+            />
+            <div className={`text-xs text-right mt-1 ${bio.length >= 180 ? "text-amber-500" : "text-slate-400 dark:text-slate-500"}`}>
+              {bio.length}/200
+            </div>
+          </div>
+        ) : (
+          <div className="text-base text-slate-700 dark:text-slate-200">
+            {user?.bio || <span className="text-slate-400 dark:text-slate-500 text-sm">설정되지 않음</span>}
+          </div>
+        )}
+      </div>
+
+      {/* Social Links */}
+      <div className="py-3">
+        <div className="flex items-center gap-1.5 mb-2">
+          <Globe className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+          <span className="text-sm text-slate-400 dark:text-slate-500">소셜 링크</span>
+        </div>
+        {editing ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-500 dark:text-slate-400 w-16 shrink-0">Twitter</span>
+              <input
+                value={socialTwitter}
+                onChange={(e) => setSocialTwitter(e.target.value)}
+                className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:border-blue-500 transition"
+                placeholder="https://twitter.com/username"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-500 dark:text-slate-400 w-16 shrink-0">GitHub</span>
+              <input
+                value={socialGithub}
+                onChange={(e) => setSocialGithub(e.target.value)}
+                className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:border-blue-500 transition"
+                placeholder="https://github.com/username"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-500 dark:text-slate-400 w-16 shrink-0">Blog</span>
+              <input
+                value={socialBlog}
+                onChange={(e) => setSocialBlog(e.target.value)}
+                className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:border-blue-500 transition"
+                placeholder="https://blog.example.com"
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {user?.social_links && Object.keys(user.social_links).length > 0 ? (
+              Object.entries(user.social_links).map(([key, url]) => (
+                <div key={key} className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400 dark:text-slate-500 w-14 capitalize">{key}</span>
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-500 hover:text-blue-600 truncate flex items-center gap-1 transition"
+                  >
+                    {url}
+                    <ExternalLink className="h-3 w-3 shrink-0" />
+                  </a>
+                </div>
+              ))
+            ) : (
+              <span className="text-sm text-slate-400 dark:text-slate-500">설정되지 않음</span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Edit Actions */}
+      {editing && (
+        <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <button onClick={handleSave} disabled={saving} className="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 disabled:opacity-50 transition">
+            {saving ? "저장 중..." : "저장"}
+          </button>
+          <button onClick={() => setEditing(false)} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm font-medium rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+            취소
+          </button>
+        </div>
+      )}
     </section>
   );
 }
@@ -883,6 +1091,94 @@ function TelegramSection() {
   );
 }
 
+/* ─────────────────── Notification Preferences Section ─────────────────── */
+function NotificationPreferencesSection() {
+  const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    api.getNotificationPreferences()
+      .then((data) => { setPrefs(data); setLoading(false); })
+      .catch(() => { setLoading(false); });
+  }, []);
+
+  const handleToggle = async (key: keyof NotificationPreferences) => {
+    if (!prefs) return;
+    const newValue = !prefs[key];
+    setSaving(key);
+    setError("");
+    try {
+      const updated = await api.updateNotificationPreferences({ [key]: newValue });
+      setPrefs(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "설정 변경에 실패했습니다.");
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const toggleItems: { key: keyof NotificationPreferences; label: string; desc: string }[] = [
+    { key: "email_on_like", label: "좋아요 알림", desc: "내 게시글이나 댓글에 좋아요를 받으면 이메일로 알림" },
+    { key: "email_on_comment", label: "댓글 알림", desc: "내 게시글에 새 댓글이 달리면 이메일로 알림" },
+    { key: "email_on_follow", label: "팔로우 알림", desc: "새로운 팔로워가 생기면 이메일로 알림" },
+    { key: "email_on_dm", label: "DM 알림", desc: "새 다이렉트 메시지가 오면 이메일로 알림" },
+    { key: "email_weekly_digest", label: "주간 리포트", desc: "매주 활동 요약 및 인기 콘텐츠를 이메일로 수신" },
+  ];
+
+  return (
+    <section className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-700/60 rounded-xl shadow-sm p-6 space-y-4">
+      <div className="flex items-center gap-2">
+        <Bell className="h-5 w-5 text-blue-500" />
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">알림 설정</h2>
+      </div>
+      <p className="text-sm text-slate-500 dark:text-slate-400">이메일 알림 수신 여부를 설정합니다.</p>
+
+      {error && (
+        <div className="p-2.5 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-700 rounded-lg text-xs text-rose-600">{error}</div>
+      )}
+
+      {loading ? (
+        <div className="text-sm text-slate-500 dark:text-slate-400">로딩 중...</div>
+      ) : prefs ? (
+        <div className="space-y-1">
+          {toggleItems.map((item) => (
+            <div
+              key={item.key}
+              className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium text-slate-700 dark:text-slate-200">{item.label}</div>
+                <div className="text-xs text-slate-400 dark:text-slate-500">{item.desc}</div>
+              </div>
+              <button
+                onClick={() => handleToggle(item.key)}
+                disabled={saving === item.key}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ml-3 ${
+                  prefs[item.key]
+                    ? "bg-blue-500"
+                    : "bg-slate-200 dark:bg-slate-700"
+                } ${saving === item.key ? "opacity-50" : ""}`}
+                role="switch"
+                aria-checked={prefs[item.key]}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                    prefs[item.key] ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-sm text-slate-500 dark:text-slate-400">알림 설정을 불러올 수 없습니다.</div>
+      )}
+    </section>
+  );
+}
+
 /* ──────────────────── Main Page ──────────────────── */
 export default function SettingsPage() {
   return (
@@ -897,6 +1193,7 @@ export default function SettingsPage() {
       <ReferralSection />
       <ApiKeySection />
       <TelegramSection />
+      <NotificationPreferencesSection />
     </div>
   );
 }

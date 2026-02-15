@@ -76,8 +76,16 @@ async def get_current_user(
 async def get_current_admin(
     user: User = Depends(get_current_user),
 ) -> User:
-    if (user.plan or "").lower() != "admin":
+    if (user.role or "") not in ("admin",) and (user.plan or "").lower() != "admin":
         raise HTTPException(status_code=403, detail="관리자 권한이 필요합니다.")
+    return user
+
+
+async def get_current_moderator(
+    user: User = Depends(get_current_user),
+) -> User:
+    if (user.role or "") not in ("admin", "moderator") and (user.plan or "").lower() != "admin":
+        raise HTTPException(status_code=403, detail="모더레이터 이상의 권한이 필요합니다.")
     return user
 
 

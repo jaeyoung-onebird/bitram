@@ -2,7 +2,18 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 interface AuthState {
-  user: { id: string; email: string; nickname: string; plan: string; telegram_chat_id?: string | null } | null;
+  user: {
+    id: string;
+    email: string;
+    nickname: string;
+    plan: string;
+    email_verified?: boolean;
+    role?: string;
+    avatar_url?: string | null;
+    bio?: string | null;
+    social_links?: Record<string, string> | null;
+    telegram_chat_id?: string | null;
+  } | null;
   accessToken: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -26,6 +26,41 @@ const CATEGORY_STYLE: Record<string, string> = {
   free: "border-gray-500/50 bg-slate-500/10 text-slate-400",
 };
 
+// ─── Markdown Rendering ────────────────────────────────────────────
+function renderMarkdown(text: string): string {
+  let html = text;
+  // Escape HTML
+  html = html.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  // Headers
+  html = html.replace(/^### (.+)$/gm, '<h3 class="text-base font-bold text-slate-800 dark:text-slate-100 mt-4 mb-2">$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2 class="text-lg font-bold text-slate-800 dark:text-slate-100 mt-4 mb-2">$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-4 mb-2">$1</h1>');
+  // Bold
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="font-bold">$1</strong>');
+  // Italic
+  html = html.replace(/\*(.+?)\*/g, '<em class="italic">$1</em>');
+  // Code blocks
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-slate-100 dark:bg-slate-800 rounded-lg p-3 overflow-x-auto text-xs my-2"><code>$2</code></pre>');
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, '<code class="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-xs text-pink-500 dark:text-pink-400">$1</code>');
+  // Blockquotes
+  html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="border-l-4 border-blue-500/30 pl-4 py-1 my-2 text-slate-500 dark:text-slate-400 italic">$1</blockquote>');
+  // Images
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full rounded-lg my-2" loading="lazy" />');
+  // Links
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:underline">$1</a>');
+  // Unordered lists
+  html = html.replace(/^- (.+)$/gm, '<li class="ml-4 list-disc text-sm">$1</li>');
+  // Ordered lists
+  html = html.replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal text-sm">$1</li>');
+  // Horizontal rules
+  html = html.replace(/^---$/gm, '<hr class="border-slate-200 dark:border-slate-700 my-4" />');
+  // Line breaks (double newline = paragraph)
+  html = html.replace(/\n\n/g, '<br/><br/>');
+  html = html.replace(/\n/g, '<br/>');
+  return html;
+}
+
 function renderContent(text: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
   const regex = /!\[([^\]]*)\]\(([^)]+)\)/g;
@@ -43,16 +78,38 @@ function renderContent(text: string): React.ReactNode[] {
   return parts;
 }
 
+// ─── Toolbar ────────────────────────────────────────────────────────
+interface ToolbarAction {
+  icon: string;
+  label: string;
+  prefix: string;
+  suffix: string;
+  block?: boolean;
+}
+
+const TOOLBAR_ACTIONS: ToolbarAction[] = [
+  { icon: "B", label: "굵게", prefix: "**", suffix: "**" },
+  { icon: "I", label: "기울임", prefix: "*", suffix: "*" },
+  { icon: "H", label: "제목", prefix: "## ", suffix: "", block: true },
+  { icon: "</>", label: "코드", prefix: "`", suffix: "`" },
+  { icon: "link", label: "링크", prefix: "[", suffix: "](url)" },
+  { icon: "img", label: "이미지", prefix: "![이미지](", suffix: ")" },
+  { icon: ">", label: "인용", prefix: "> ", suffix: "", block: true },
+  { icon: "list", label: "목록", prefix: "- ", suffix: "", block: true },
+];
+
 export default function NewPostPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [category, setCategory] = useState("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [strategyId, setStrategyId] = useState("");
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
+  const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
+  const [contentFormat, setContentFormat] = useState<"plain" | "markdown">("plain");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
@@ -145,6 +202,42 @@ export default function NewPostPage() {
     }
   };
 
+  const insertToolbar = useCallback((action: ToolbarAction) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.slice(start, end);
+    const before = content.slice(0, start);
+    const after = content.slice(end);
+
+    let newContent: string;
+    let newCursorPos: number;
+
+    if (action.block) {
+      // Insert at line start
+      const lineStart = before.lastIndexOf("\n") + 1;
+      const linePrefix = before.slice(lineStart);
+      newContent = before.slice(0, lineStart) + action.prefix + linePrefix + selectedText + action.suffix + after;
+      newCursorPos = lineStart + action.prefix.length + linePrefix.length + selectedText.length + action.suffix.length;
+    } else {
+      newContent = before + action.prefix + (selectedText || "텍스트") + action.suffix + after;
+      newCursorPos = start + action.prefix.length + (selectedText || "텍스트").length + action.suffix.length;
+    }
+
+    setContent(newContent);
+    // Restore focus and cursor position
+    requestAnimationFrame(() => {
+      textarea.focus();
+      if (!selectedText && !action.block) {
+        textarea.setSelectionRange(start + action.prefix.length, start + action.prefix.length + "텍스트".length);
+      } else {
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+      }
+    });
+  }, [content]);
+
   const selectedCategory = CATEGORIES.find((c) => c.key === category);
   const selectedStrategy = strategies.find((s) => s.id === strategyId);
 
@@ -160,114 +253,81 @@ export default function NewPostPage() {
           </Link>
           <h1 className="text-xl font-bold">새 글 작성</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowPreview(!showPreview)}
-            className="px-3 py-1.5 text-sm border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:hover:text-slate-100 hover:border-gray-600 rounded-lg transition"
-          >
-            {showPreview ? "편집" : "미리보기"}
-          </button>
-        </div>
       </div>
 
-      {showPreview ? (
-        /* Preview */
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-700/60 rounded-xl shadow-sm p-4 sm:p-6 space-y-4">
-          <h2 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-1">미리보기</h2>
-          <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
-            {selectedCategory && (
-              <span className={`text-xs px-2 py-0.5 rounded ${CATEGORY_STYLE[category] || ""} mr-2`}>
-                {selectedCategory.label}
-              </span>
-            )}
-            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mt-2">{title || "(제목 없음)"}</h3>
+      <div className="space-y-6">
+        {/* Category selector */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">카테고리 *</label>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 sm:gap-2">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.key}
+                onClick={() => {
+                  setCategory(cat.key);
+                  setErrors((prev) => ({ ...prev, category: "" }));
+                }}
+                className={`p-2 sm:p-3 rounded-lg border text-left transition ${
+                  category === cat.key
+                    ? CATEGORY_STYLE[cat.key]
+                    : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm"
+                }`}
+              >
+                <div className="text-xs sm:text-sm font-medium">{cat.label}</div>
+                <div className="text-[10px] sm:text-xs mt-0.5 opacity-70">{cat.desc}</div>
+              </button>
+            ))}
           </div>
-          <div className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap min-h-[100px]">
-            {content ? renderContent(content) : "(내용 없음)"}
-          </div>
-          {selectedStrategy && (
-            <div className="p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
-                  </svg>
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-slate-700 dark:text-slate-200">첨부된 전략</div>
-                  <div className="text-xs text-slate-400 dark:text-slate-500">{selectedStrategy.name} ({selectedStrategy.pair} / {selectedStrategy.timeframe})</div>
-                </div>
-              </div>
-            </div>
-          )}
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
-            <button
-              onClick={() => setShowPreview(false)}
-              className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:hover:text-slate-100 hover:border-gray-600 rounded-lg transition"
-            >
-              편집으로 돌아가기
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="px-4 sm:px-6 py-1.5 sm:py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              {submitting ? "등록 중..." : "게시하기"}
-            </button>
+          {errors.category && <p className="text-xs text-red-400">{errors.category}</p>}
+        </div>
+
+        {/* Title */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">제목 *</label>
+          <input
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setErrors((prev) => ({ ...prev, title: "" }));
+            }}
+            placeholder="제목을 입력하세요"
+            maxLength={100}
+            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm sm:text-base text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-blue-500 transition"
+          />
+          <div className="flex items-center justify-between">
+            {errors.title && <p className="text-xs text-red-400">{errors.title}</p>}
+            <p className="text-xs text-slate-500 dark:text-slate-400 ml-auto">{title.length}/100</p>
           </div>
         </div>
-      ) : (
-        /* Edit form */
-        <div className="space-y-6">
-          {/* Category selector */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-600 dark:text-slate-300">카테고리 *</label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 sm:gap-2">
-              {CATEGORIES.map((cat) => (
+
+        {/* Content */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-slate-600 dark:text-slate-300">내용 *</label>
+            <div className="flex items-center gap-2">
+              {/* Format toggle */}
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
                 <button
-                  key={cat.key}
-                  onClick={() => {
-                    setCategory(cat.key);
-                    setErrors((prev) => ({ ...prev, category: "" }));
-                  }}
-                  className={`p-2 sm:p-3 rounded-lg border text-left transition ${
-                    category === cat.key
-                      ? CATEGORY_STYLE[cat.key]
-                      : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm"
+                  onClick={() => setContentFormat("plain")}
+                  className={`px-2.5 py-1 text-xs rounded-md transition ${
+                    contentFormat === "plain"
+                      ? "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-sm"
+                      : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
                   }`}
                 >
-                  <div className="text-xs sm:text-sm font-medium">{cat.label}</div>
-                  <div className="text-[10px] sm:text-xs mt-0.5 opacity-70">{cat.desc}</div>
+                  일반
                 </button>
-              ))}
-            </div>
-            {errors.category && <p className="text-xs text-red-400">{errors.category}</p>}
-          </div>
-
-          {/* Title */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-600 dark:text-slate-300">제목 *</label>
-            <input
-              value={title}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                setErrors((prev) => ({ ...prev, title: "" }));
-              }}
-              placeholder="제목을 입력하세요"
-              maxLength={100}
-              className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm sm:text-base text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-blue-500 transition"
-            />
-            <div className="flex items-center justify-between">
-              {errors.title && <p className="text-xs text-red-400">{errors.title}</p>}
-              <p className="text-xs text-slate-500 dark:text-slate-400 ml-auto">{title.length}/100</p>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-slate-600 dark:text-slate-300">내용 *</label>
+                <button
+                  onClick={() => setContentFormat("markdown")}
+                  className={`px-2.5 py-1 text-xs rounded-md transition ${
+                    contentFormat === "markdown"
+                      ? "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-sm"
+                      : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
+                  }`}
+                >
+                  마크다운
+                </button>
+              </div>
               <label className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:hover:text-slate-100 hover:border-gray-600 transition cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -276,89 +336,163 @@ export default function NewPostPage() {
                 <input type="file" accept="image/*" multiple onChange={handleImageUpload} className="hidden" />
               </label>
             </div>
+          </div>
+
+          {/* Markdown Toolbar */}
+          {contentFormat === "markdown" && (
+            <div className="flex items-center gap-1 flex-wrap bg-slate-50 dark:bg-slate-800 rounded-lg p-1.5 border border-slate-200/60 dark:border-slate-700/60">
+              {TOOLBAR_ACTIONS.map((action) => (
+                <button
+                  key={action.label}
+                  onClick={() => insertToolbar(action)}
+                  title={action.label}
+                  className="px-2 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-white dark:hover:bg-slate-700 rounded transition"
+                >
+                  {action.icon === "link" ? (
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                  ) : action.icon === "img" ? (
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  ) : action.icon === "list" ? (
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                  ) : (
+                    <span className={action.icon === "B" ? "font-bold" : action.icon === "I" ? "italic" : ""}>
+                      {action.icon}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Edit/Preview tabs */}
+          {contentFormat === "markdown" && (
+            <div className="flex items-center gap-2 border-b border-slate-200/60 dark:border-slate-700/60">
+              <button
+                onClick={() => setActiveTab("edit")}
+                className={`px-3 py-1.5 text-xs font-medium border-b-2 transition -mb-px ${
+                  activeTab === "edit"
+                    ? "border-blue-500 text-blue-500"
+                    : "border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
+                }`}
+              >
+                편집
+              </button>
+              <button
+                onClick={() => setActiveTab("preview")}
+                className={`px-3 py-1.5 text-xs font-medium border-b-2 transition -mb-px ${
+                  activeTab === "preview"
+                    ? "border-blue-500 text-blue-500"
+                    : "border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
+                }`}
+              >
+                미리보기
+              </button>
+            </div>
+          )}
+
+          {/* Textarea or preview */}
+          {(contentFormat === "plain" || activeTab === "edit") ? (
             <textarea
+              ref={textareaRef}
               value={content}
               onChange={(e) => {
                 setContent(e.target.value);
                 setErrors((prev) => ({ ...prev, content: "" }));
               }}
               onPaste={handlePaste}
-              placeholder="내용을 입력하세요... (이미지 붙여넣기 가능, @닉네임으로 멘션 가능)"
+              placeholder={contentFormat === "markdown" ? "마크다운으로 작성하세요... (**굵게**, *기울임*, # 제목, > 인용)" : "내용을 입력하세요... (이미지 붙여넣기 가능, @닉네임으로 멘션 가능)"}
               rows={12}
-              className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm sm:text-base text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-blue-500 transition resize-none"
+              className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm sm:text-base text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-blue-500 transition resize-none font-mono"
             />
-            {imageUrls.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {imageUrls.map((url, i) => (
-                  <div key={i} className="relative group">
-                    <img src={url} alt="" className="w-20 h-20 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
-                    <button
-                      onClick={() => {
-                        setImageUrls((prev) => prev.filter((_, j) => j !== i));
-                        setContent((prev) => prev.replace(`![이미지](${url})`, "").trim());
-                      }}
-                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                    >
-                      x
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {errors.content && <p className="text-xs text-red-400">{errors.content}</p>}
-          </div>
+          ) : (
+            <div className="min-h-[280px] px-3 sm:px-4 py-2.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              {content ? (
+                <div dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }} />
+              ) : (
+                <span className="text-slate-400 dark:text-slate-600">(내용 없음)</span>
+              )}
+            </div>
+          )}
 
-          {/* Strategy attachment */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-600 dark:text-slate-300">전략 첨부 (선택)</label>
-            <select
-              value={strategyId}
-              onChange={(e) => setStrategyId(e.target.value)}
-              className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm sm:text-base text-slate-800 dark:text-slate-100 focus:outline-none focus:border-blue-500 transition appearance-none"
-            >
-              <option value="">전략을 선택하지 않음</option>
-              {strategies.map((strategy) => (
-                <option key={strategy.id} value={strategy.id}>
-                  {strategy.name} ({strategy.pair} / {strategy.timeframe})
-                </option>
+          {imageUrls.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {imageUrls.map((url, i) => (
+                <div key={i} className="relative group">
+                  <img src={url} alt="" className="w-20 h-20 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
+                  <button
+                    onClick={() => {
+                      setImageUrls((prev) => prev.filter((_, j) => j !== i));
+                      setContent((prev) => prev.replace(`![이미지](${url})`, "").trim());
+                    }}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                  >
+                    x
+                  </button>
+                </div>
               ))}
-            </select>
-            {strategies.length === 0 && (
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                등록된 전략이 없습니다.{" "}
-                <Link href="/strategies/new" className="text-blue-500 hover:underline">
-                  전략 만들기
-                </Link>
-              </p>
-            )}
-          </div>
+            </div>
+          )}
+          {errors.content && <p className="text-xs text-red-400">{errors.content}</p>}
+        </div>
 
-          {/* Submit */}
-          <div className="flex items-center justify-end gap-2 sm:gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-            <Link
-              href="/community"
-              className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:hover:text-slate-100 hover:border-gray-600 rounded-lg transition"
-            >
-              취소
-            </Link>
+        {/* Strategy attachment */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">전략 첨부 (선택)</label>
+          <select
+            value={strategyId}
+            onChange={(e) => setStrategyId(e.target.value)}
+            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm sm:text-base text-slate-800 dark:text-slate-100 focus:outline-none focus:border-blue-500 transition appearance-none"
+          >
+            <option value="">전략을 선택하지 않음</option>
+            {strategies.map((strategy) => (
+              <option key={strategy.id} value={strategy.id}>
+                {strategy.name} ({strategy.pair} / {strategy.timeframe})
+              </option>
+            ))}
+          </select>
+          {strategies.length === 0 && (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              등록된 전략이 없습니다.{" "}
+              <Link href="/strategies/new" className="text-blue-500 hover:underline">
+                전략 만들기
+              </Link>
+            </p>
+          )}
+        </div>
+
+        {/* Submit */}
+        <div className="flex items-center justify-end gap-2 sm:gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <Link
+            href="/community"
+            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:hover:text-slate-100 hover:border-gray-600 rounded-lg transition"
+          >
+            취소
+          </Link>
+          {contentFormat === "plain" && (
             <button
               onClick={() => {
-                if (validate()) setShowPreview(true);
+                if (validate()) setActiveTab("preview");
               }}
               className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:hover:text-slate-100 hover:border-gray-600 rounded-lg transition"
             >
               미리보기
             </button>
-            <button
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="px-4 sm:px-6 py-1.5 sm:py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              {submitting ? "등록 중..." : "게시하기"}
-            </button>
-          </div>
+          )}
+          <button
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="px-4 sm:px-6 py-1.5 sm:py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+          >
+            {submitting ? "등록 중..." : "게시하기"}
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

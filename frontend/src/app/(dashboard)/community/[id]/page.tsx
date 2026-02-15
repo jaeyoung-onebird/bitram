@@ -5,7 +5,9 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
 import { useToast } from "@/components/Toast";
-import type { Post, Comment } from "@/types";
+import ReactionPicker from "@/components/ReactionPicker";
+import ShareButtons from "@/components/ShareButtons";
+import type { Post, Comment, ReactionCount } from "@/types";
 
 const CATEGORY_LABEL: Record<string, string> = {
   strategy: "전략공유",
@@ -332,6 +334,7 @@ export default function PostDetailPage() {
   const [bookmarked, setBookmarked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [copying, setCopying] = useState(false);
+  const [reactions, setReactions] = useState<ReactionCount[]>([]);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [reportDesc, setReportDesc] = useState("");
@@ -360,14 +363,24 @@ export default function PostDetailPage() {
     }
   }, [postId]);
 
+  const fetchReactions = useCallback(async (guard?: { current: boolean }) => {
+    try {
+      const result = await api.getReactions(postId);
+      if (guard && !guard.current) return;
+      setReactions(result);
+    } catch (err) {
+      console.error("Failed to fetch reactions:", err);
+    }
+  }, [postId]);
+
   useEffect(() => {
     const guard = { current: true };
     setLoading(true);
-    Promise.all([fetchPost(guard), fetchComments(guard)]).finally(() => {
+    Promise.all([fetchPost(guard), fetchComments(guard), fetchReactions(guard)]).finally(() => {
       if (guard.current) setLoading(false);
     });
     return () => { guard.current = false; };
-  }, [fetchPost, fetchComments]);
+  }, [fetchPost, fetchComments, fetchReactions]);
 
   const handleToggleLike = async () => {
     try {
@@ -385,6 +398,25 @@ export default function PostDetailPage() {
       setBookmarked(result.bookmarked);
     } catch (err) {
       console.error("Failed to toggle bookmark:", err);
+    }
+  };
+
+  const handleToggleReaction = async (emoji: string) => {
+    try {
+      const result = await api.toggleReaction(postId, emoji);
+      setReactions((prev) =>
+        prev.map((r) =>
+          r.emoji === emoji
+            ? { ...r, reacted: result.reacted, count: result.reacted ? r.count + 1 : Math.max(0, r.count - 1) }
+            : r
+        ).concat(
+          prev.some((r) => r.emoji === emoji)
+            ? []
+            : [{ emoji, count: result.reacted ? 1 : 0, reacted: result.reacted }]
+        )
+      );
+    } catch (err) {
+      console.error("Failed to toggle reaction:", err);
     }
   };
 
@@ -511,12 +543,34 @@ export default function PostDetailPage() {
 
         {/* Author info */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-4">
-          <div className="flex items-center gap-2">
-            {post.author.level != null && (
-              <span className="text-xs font-black text-blue-500">Lv.{post.author.level}</span>
-            )}
-            <Link href={`/community/user/${post.author.id}`} className="text-sm font-medium text-slate-700 dark:text-slate-200 hover:text-blue-500 transition">{post.author.nickname}</Link>
-            <span className="text-xs text-slate-500 dark:text-slate-400">{formatDate(post.created_at)}</span>
+          <div className="flex items-center gap-3">
+            <Link href={`/community/user/${post.author.id}`} className="shrink-0">
+              {post.author.avatar_url ? (
+                <img
+                  src={post.author.avatar_url}
+                  alt={post.author.nickname}
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                  <span className="text-sm font-bold text-slate-500 dark:text-slate-400">
+                    {post.author.nickname.charAt(0)}
+                  </span>
+                </div>
+              )}
+            </Link>
+            <div>
+              <div className="flex items-center gap-2">
+                {post.author.level != null && (
+                  <span className="text-xs font-black text-blue-500">Lv.{post.author.level}</span>
+                )}
+                <Link href={`/community/user/${post.author.id}`} className="text-sm font-medium text-slate-700 dark:text-slate-200 hover:text-blue-500 transition">{post.author.nickname}</Link>
+                <span className="text-xs text-slate-500 dark:text-slate-400">{formatDate(post.created_at)}</span>
+              </div>
+              {post.author.bio && (
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 line-clamp-1">{post.author.bio}</p>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 text-xs text-slate-500 dark:text-slate-400">
             <span>조회 {post.view_count}</span>
@@ -606,12 +660,14 @@ export default function PostDetailPage() {
             </svg>
             <span className="hidden sm:inline">북마크</span>
           </button>
-          <button onClick={handleShare} className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">
-            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-            </svg>
-            <span className="hidden sm:inline">공유</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 hidden sm:inline">공유</span>
+            <ShareButtons
+              title={post.title}
+              url={typeof window !== "undefined" ? window.location.href : ""}
+              description={post.content.slice(0, 100)}
+            />
+          </div>
           {user?.id !== post.author.id && (
             <button onClick={() => setShowReportModal(true)} className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400 hover:text-red-400 transition ml-auto">
               <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -620,6 +676,16 @@ export default function PostDetailPage() {
               <span className="hidden sm:inline">신고</span>
             </button>
           )}
+        </div>
+
+        {/* Reactions */}
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+          <ReactionPicker
+            targetType="post"
+            targetId={postId}
+            reactions={reactions}
+            onReact={handleToggleReaction}
+          />
         </div>
       </article>
 

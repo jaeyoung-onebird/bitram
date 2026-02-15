@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy import (
-    Column, String, Boolean, Integer, Float, Text, DateTime, Enum, ForeignKey,
+    Column, String, Boolean, Integer, Float, Text, DateTime, Date, Enum, ForeignKey,
     UniqueConstraint, Index, Numeric, JSON,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -30,6 +30,15 @@ class User(Base):
     plan_expires_at = Column(DateTime(timezone=True), nullable=True)
     referral_code = Column(String(12), unique=True, nullable=True, index=True)
     telegram_chat_id = Column(String(50), nullable=True)
+    email_verified = Column(Boolean, default=False)
+    email_verify_token = Column(String(128), nullable=True, index=True)
+    email_verify_expires = Column(DateTime(timezone=True), nullable=True)
+    password_reset_token = Column(String(128), nullable=True, index=True)
+    password_reset_expires = Column(DateTime(timezone=True), nullable=True)
+    role = Column(String(20), default="user")  # user, moderator, admin
+    avatar_url = Column(String(500), nullable=True)
+    bio = Column(Text, nullable=True)
+    social_links = Column(JSONB, nullable=True)  # {"twitter": "...", "website": "..."}
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
@@ -198,6 +207,31 @@ class OHLCV(Base):
     )
 
 
+# ─── Post Series (연재) ─────────────────────────────────────────────────────
+
+class PostSeries(Base):
+    __tablename__ = "post_series"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=gen_uuid)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    cover_image_url = Column(String(500), nullable=True)
+    is_complete = Column(Boolean, default=False)
+    post_count = Column(Integer, default=0)
+    subscriber_count = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    user = relationship("User", backref="series")
+    posts = relationship("Post", back_populates="series", order_by="Post.series_order")
+
+    __table_args__ = (
+        Index("ix_post_series_user_id", "user_id"),
+        Index("ix_post_series_created_at", "created_at"),
+    )
+
+
 # ─── Community Posts ─────────────────────────────────────────────────────────
 
 class Post(Base):
@@ -208,7 +242,11 @@ class Post(Base):
     category = Column(String(20), nullable=False)  # strategy, profit, question, free
     title = Column(String(200), nullable=False)
     content = Column(Text, nullable=False)
+    content_format = Column(String(10), default="plain")  # plain, markdown
     strategy_id = Column(UUID(as_uuid=True), ForeignKey("strategies.id", ondelete="SET NULL"), nullable=True)
+    sub_community_id = Column(UUID(as_uuid=True), ForeignKey("sub_communities.id", ondelete="SET NULL"), nullable=True)
+    series_id = Column(UUID(as_uuid=True), ForeignKey("post_series.id", ondelete="SET NULL"), nullable=True)
+    series_order = Column(Integer, nullable=True)
     verified_profit = Column(JSONB, nullable=True)
     image_urls = Column(JSONB, nullable=True)  # list of image URLs
     like_count = Column(Integer, default=0)
@@ -220,6 +258,7 @@ class Post(Base):
 
     user = relationship("User", back_populates="posts")
     strategy = relationship("Strategy")
+    series = relationship("PostSeries", back_populates="posts")
     comments = relationship("Comment", back_populates="post", cascade="all, delete-orphan")
 
     __table_args__ = (
@@ -440,6 +479,7 @@ class Referral(Base):
     referred_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
     code = Column(String(12), nullable=False)
     rewarded = Column(Boolean, default=False)
+    milestones_json = Column(JSONB, default=dict)  # Track which milestones have been rewarded
     created_at = Column(DateTime(timezone=True), default=utcnow)
 
     __table_args__ = (
@@ -478,4 +518,179 @@ class CompetitionEntry(Base):
     __table_args__ = (
         UniqueConstraint("competition_id", "user_id", name="uq_competition_entry"),
         Index("ix_competition_entries_competition_id", "competition_id"),
+    )
+
+
+# ─── Reactions (Emoji) ─────────────────────────────────────────────────────
+
+class Reaction(Base):
+    __tablename__ = "reactions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=gen_uuid)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    target_type = Column(String(10), nullable=False)  # post, comment
+    target_id = Column(UUID(as_uuid=True), nullable=False)
+    emoji = Column(String(20), nullable=False)  # thumbsup, heart, fire, rocket, eyes, thinking
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "target_type", "target_id", "emoji", name="uq_reactions"),
+        Index("ix_reactions_target", "target_type", "target_id"),
+    )
+
+
+# ─── Direct Messages ──────────────────────────────────────────────────────
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=gen_uuid)
+    participant_a = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    participant_b = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    last_message_at = Column(DateTime(timezone=True), default=utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("participant_a", "participant_b", name="uq_conversation_pair"),
+        Index("ix_conversations_a", "participant_a"),
+        Index("ix_conversations_b", "participant_b"),
+    )
+
+
+class DirectMessage(Base):
+    __tablename__ = "direct_messages"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=gen_uuid)
+    conversation_id = Column(UUID(as_uuid=True), ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False)
+    sender_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    content = Column(Text, nullable=False)
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (
+        Index("ix_dm_conversation_id", "conversation_id"),
+        Index("ix_dm_created_at", "created_at"),
+    )
+
+
+# ─── Sub-Communities ───────────────────────────────────────────────────────
+
+class SubCommunity(Base):
+    __tablename__ = "sub_communities"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=gen_uuid)
+    slug = Column(String(50), unique=True, nullable=False, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    icon_url = Column(String(500), nullable=True)
+    coin_pair = Column(String(20), nullable=True)  # KRW-BTC for coin boards, null for topic boards
+    member_count = Column(Integer, default=0)
+    post_count = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+
+class SubCommunityMember(Base):
+    __tablename__ = "sub_community_members"
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    sub_community_id = Column(UUID(as_uuid=True), ForeignKey("sub_communities.id", ondelete="CASCADE"), primary_key=True)
+    joined_at = Column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (
+        Index("ix_scm_sub_community_id", "sub_community_id"),
+    )
+
+
+# ─── Moderation Actions ───────────────────────────────────────────────────
+
+class ModerationAction(Base):
+    __tablename__ = "moderation_actions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=gen_uuid)
+    moderator_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    report_id = Column(UUID(as_uuid=True), ForeignKey("reports.id", ondelete="SET NULL"), nullable=True)
+    action_type = Column(String(30), nullable=False)  # warn, mute, ban, delete_post, delete_comment, dismiss
+    target_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    target_type = Column(String(20), nullable=True)
+    target_id = Column(UUID(as_uuid=True), nullable=True)
+    reason = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (
+        Index("ix_mod_actions_moderator_id", "moderator_id"),
+    )
+
+
+# ─── Notification Preferences ─────────────────────────────────────────────
+
+class UserNotificationPreference(Base):
+    __tablename__ = "user_notification_preferences"
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    email_on_like = Column(Boolean, default=False)
+    email_on_comment = Column(Boolean, default=True)
+    email_on_follow = Column(Boolean, default=True)
+    email_on_dm = Column(Boolean, default=True)
+    email_weekly_digest = Column(Boolean, default=True)
+    push_on_like = Column(Boolean, default=True)
+    push_on_comment = Column(Boolean, default=True)
+    push_on_follow = Column(Boolean, default=True)
+    push_on_dm = Column(Boolean, default=True)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+# ─── Attendance ──────────────────────────────────────────────────────────────
+
+class Attendance(Base):
+    __tablename__ = "attendances"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=gen_uuid)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    checked_at = Column(Date, nullable=False)  # KST date
+    streak = Column(Integer, default=1)
+    points_earned = Column(Integer, default=10)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "checked_at", name="uq_attendance_user_date"),
+        Index("ix_attendances_user_id", "user_id"),
+        Index("ix_attendances_checked_at", "checked_at"),
+    )
+
+
+# ─── Quest Claims ────────────────────────────────────────────────────────────
+
+class QuestClaim(Base):
+    __tablename__ = "quest_claims"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=gen_uuid)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    quest_id = Column(String(50), nullable=False)  # e.g. "write_post"
+    claimed_date = Column(Date, nullable=False)  # KST date
+    points_earned = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "quest_id", "claimed_date", name="uq_quest_claim"),
+        Index("ix_quest_claims_user_id", "user_id"),
+    )
+
+
+# ─── Tweet Log (Twitter Bot) ──────────────────────────────────────────────
+
+class TweetLog(Base):
+    __tablename__ = "tweet_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=gen_uuid)
+    content_type = Column(String(30), nullable=False)
+    content = Column(Text, nullable=False)
+    tweet_id = Column(String(30), nullable=True)
+    status = Column(String(20), nullable=False, default="pending")
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (
+        Index("ix_tweet_logs_status", "status"),
+        Index("ix_tweet_logs_content_type", "content_type"),
+        Index("ix_tweet_logs_created_at", "created_at"),
     )

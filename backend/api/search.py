@@ -1,9 +1,10 @@
 """
 Search API: full-text search for posts and users.
+Uses PostgreSQL tsvector for post search with ILIKE fallback.
 """
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, text
 
 from db.database import get_db
 from db.models import User, Post
@@ -19,13 +20,29 @@ async def search_posts(
     size: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
 ):
-    """Search posts by title or content (case-insensitive ILIKE)."""
-    pattern = f"%{q}%"
-    stmt = (
-        select(Post, User.nickname, User.plan)
-        .join(User, Post.user_id == User.id)
-        .where(or_(Post.title.ilike(pattern), Post.content.ilike(pattern)))
-    )
+    """Search posts using full-text search (tsvector) with ILIKE fallback."""
+    # Try full-text search first, fall back to ILIKE if search_vector column doesn't exist
+    try:
+        ts_query = func.to_tsquery("simple", " & ".join(q.split()))
+        stmt = (
+            select(Post, User.nickname, User.plan)
+            .join(User, Post.user_id == User.id)
+            .where(
+                or_(
+                    Post.search_vector.op("@@")(ts_query),
+                    Post.title.ilike(f"%{q}%"),
+                )
+            )
+        )
+    except Exception:
+        # Fallback to ILIKE if search_vector not available
+        pattern = f"%{q}%"
+        stmt = (
+            select(Post, User.nickname, User.plan)
+            .join(User, Post.user_id == User.id)
+            .where(or_(Post.title.ilike(pattern), Post.content.ilike(pattern)))
+        )
+
     if category:
         stmt = stmt.where(Post.category == category)
 

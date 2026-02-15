@@ -1,6 +1,8 @@
 """
 Community Posts API: CRUD, like, bookmark, copy strategy, profiles, trending
 """
+import json as _json
+import math
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -9,19 +11,27 @@ from sqlalchemy import select, func, update, delete
 from uuid import UUID
 
 from db.database import get_db
-from db.models import User, Post, Comment, Like, Bookmark, Strategy, Bot, Badge, UserPoints
+from db.models import (
+    User, Post, Comment, Like, Bookmark, Strategy, Bot, Badge, UserPoints,
+    Reaction, Follow, SubCommunityMember,
+)
 from api.deps import get_current_user, get_current_user_optional
 from api.notifications import create_notification
 from core.points import compute_level
+from core.sanitizer import sanitize_text, sanitize_content, sanitize_markdown
+from core.redis_cache import cache_get, cache_set, cache_delete
+from middleware.rate_limit import rate_limit
 
 router = APIRouter(prefix="/api/posts", tags=["community"])
 
 
 class PostCreateRequest(BaseModel):
-    category: str  # strategy, profit, question, free
+    category: str  # strategy, profit, question, free, chart, news, humor
     title: str
     content: str
+    content_format: str = "plain"  # plain, markdown
     strategy_id: str | None = None
+    sub_community_id: str | None = None
 
 
 class PostUpdateRequest(BaseModel):
@@ -58,6 +68,7 @@ class PostResponse(BaseModel):
     category: str
     title: str
     content: str
+    content_format: str = "plain"
     strategy_id: str | None
     strategy_name: str | None = None
     verified_profit: dict | None
@@ -109,6 +120,20 @@ class UserProfileResponse(BaseModel):
     following_count: int = 0
     is_following: bool = False
     recent_posts: list[PostListItem]
+
+
+class HotPostItem(BaseModel):
+    id: str
+    author: AuthorInfo
+    category: str
+    title: str
+    like_count: int
+    comment_count: int
+    view_count: int
+    has_strategy: bool
+    verified_profit_pct: float | None = None
+    velocity_score: float
+    created_at: str
 
 
 class TrendingPostItem(BaseModel):
@@ -183,12 +208,18 @@ async def create_post(
             verified_profit["live_win_rate"] = round(int(row[2] or 0) / int(row[1]) * 100, 1)
             verified_profit["verified"] = True
 
+    # Validate content_format
+    c_format = req.content_format if req.content_format in ("plain", "markdown") else "plain"
+    sanitized_content = sanitize_markdown(req.content) if c_format == "markdown" else sanitize_content(req.content)
+
     post = Post(
         user_id=user.id,
         category=req.category,
-        title=req.title,
-        content=req.content,
+        title=sanitize_text(req.title),
+        content=sanitized_content,
+        content_format=c_format,
         strategy_id=UUID(req.strategy_id) if req.strategy_id else None,
+        sub_community_id=UUID(req.sub_community_id) if req.sub_community_id else None,
         verified_profit=verified_profit,
     )
     db.add(post)
@@ -203,8 +234,19 @@ async def create_post(
     except Exception:
         pass
 
+    # Check referral milestones (e.g., first post by referred user rewards referrer)
+    try:
+        from core.referral_rewards import check_referral_milestones
+        await check_referral_milestones(db, user.id)
+    except Exception:
+        pass
+
     await db.commit()
     await db.refresh(post)
+
+    # Invalidate trending & hot cache
+    await cache_delete("posts:trending")
+    await cache_delete("posts:hot")
 
     return await _to_post_response(post, user, db, strategy_name=strategy_name)
 
@@ -266,7 +308,12 @@ async def list_posts(
 async def trending_posts(
     db: AsyncSession = Depends(get_db),
 ):
-    """Returns trending posts: high engagement in the last 7 days."""
+    """Returns trending posts: high engagement in the last 7 days. Cached for 5 minutes."""
+    # Check cache first
+    cached = await cache_get("posts:trending")
+    if cached:
+        return _json.loads(cached)
+
     seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
 
     # Engagement score: like_count * 2 + comment_count * 3 + view_count
@@ -285,7 +332,7 @@ async def trending_posts(
     result = await db.execute(stmt)
     rows = result.all()
 
-    return [
+    items = [
         TrendingPostItem(
             id=str(post.id),
             author=_author(post.user_id, nickname, plan, pts),
@@ -304,6 +351,91 @@ async def trending_posts(
         )
         for post, nickname, plan, score, pts in rows
     ]
+
+    # Cache for 5 minutes
+    await cache_set("posts:trending", _json.dumps([i.model_dump() for i in items]), ttl=300)
+
+    return items
+
+
+# ─── Hot Posts (velocity-based) ──────────────────────────────────────────────
+# NOTE: This route MUST be defined before /{post_id} to avoid FastAPI matching
+# "hot" as a post_id UUID.
+
+@router.get("/hot", response_model=list[HotPostItem])
+async def get_hot_posts(
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Hot posts = high engagement velocity (likes+comments per hour since creation).
+    Score = (like_count * 2 + comment_count * 3 + view_count * 0.1) / max(hours_since_creation, 1)
+    Apply log dampening for very old posts. Returns top 20 from last 48 hours.
+    Cached for 5 minutes.
+    """
+    # Check cache first
+    cached = await cache_get("posts:hot")
+    if cached:
+        return _json.loads(cached)
+
+    forty_eight_hours_ago = datetime.now(timezone.utc) - timedelta(hours=48)
+
+    stmt = (
+        select(Post, User.nickname, User.plan, UserPoints.total_points)
+        .join(User, Post.user_id == User.id)
+        .outerjoin(UserPoints, UserPoints.user_id == Post.user_id)
+        .where(Post.created_at >= forty_eight_hours_ago)
+        .order_by(Post.created_at.desc())
+        .limit(200)
+    )
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    now = datetime.now(timezone.utc)
+    scored_items = []
+    for post, nickname, plan, pts in rows:
+        hours_since = max((now - post.created_at).total_seconds() / 3600, 1)
+        raw_engagement = (
+            (post.like_count or 0) * 2
+            + (post.comment_count or 0) * 3
+            + (post.view_count or 0) * 0.1
+        )
+        # Velocity = engagement per hour
+        velocity = raw_engagement / hours_since
+        # Log dampening for posts older than 12 hours
+        if hours_since > 12:
+            dampening = math.log2(12) / math.log2(hours_since)
+            velocity *= dampening
+
+        scored_items.append((velocity, post, nickname, plan, pts))
+
+    # Sort by velocity score descending
+    scored_items.sort(key=lambda x: x[0], reverse=True)
+    top_items = scored_items[:20]
+
+    items = [
+        HotPostItem(
+            id=str(post.id),
+            author=_author(post.user_id, nickname, plan, pts),
+            category=post.category,
+            title=post.title,
+            like_count=post.like_count,
+            comment_count=post.comment_count,
+            view_count=post.view_count,
+            has_strategy=post.strategy_id is not None,
+            verified_profit_pct=(
+                post.verified_profit.get("total_return_pct")
+                if post.verified_profit else None
+            ),
+            velocity_score=round(velocity_score, 4),
+            created_at=str(post.created_at),
+        )
+        for velocity_score, post, nickname, plan, pts in top_items
+    ]
+
+    # Cache for 5 minutes
+    await cache_set("posts:hot", _json.dumps([i.model_dump() for i in items]), ttl=300)
+
+    return items
 
 
 # ─── User Profile ────────────────────────────────────────────────────────────
@@ -520,6 +652,176 @@ async def strategy_ranking(
     return ranked
 
 
+# ─── Sitemap ────────────────────────────────────────────────────────────────
+# NOTE: Must be defined before /{post_id}
+
+@router.get("/sitemap")
+async def posts_sitemap(
+    db: AsyncSession = Depends(get_db),
+):
+    """Public endpoint for sitemap: returns recent 1000 posts (id + updated_at)."""
+    stmt = (
+        select(Post.id, Post.updated_at)
+        .order_by(Post.updated_at.desc())
+        .limit(1000)
+    )
+    rows = (await db.execute(stmt)).all()
+    return [
+        {"id": str(pid), "updated_at": str(updated)}
+        for pid, updated in rows
+    ]
+
+
+@router.get("/sitemap/urls")
+async def sitemap_urls(
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Extended sitemap: returns post URLs + user profile URLs + series URLs.
+    Used by the frontend sitemap generator.
+    """
+    from db.models import PostSeries
+
+    # Post URLs (recent 1000)
+    post_stmt = (
+        select(Post.id, Post.updated_at)
+        .order_by(Post.updated_at.desc())
+        .limit(1000)
+    )
+    post_rows = (await db.execute(post_stmt)).all()
+    post_urls = [
+        {"loc": f"/community/{str(pid)}", "lastmod": str(updated), "type": "post"}
+        for pid, updated in post_rows
+    ]
+
+    # User profile URLs (active users with at least 1 post)
+    user_stmt = (
+        select(User.nickname, User.updated_at)
+        .where(User.is_active == True)
+        .where(
+            User.id.in_(
+                select(Post.user_id).distinct()
+            )
+        )
+        .order_by(User.updated_at.desc())
+        .limit(500)
+    )
+    user_rows = (await db.execute(user_stmt)).all()
+    user_urls = [
+        {"loc": f"/user/{nickname}", "lastmod": str(updated), "type": "profile"}
+        for nickname, updated in user_rows
+    ]
+
+    # Series URLs
+    series_stmt = (
+        select(PostSeries.id, PostSeries.updated_at)
+        .order_by(PostSeries.updated_at.desc())
+        .limit(500)
+    )
+    series_rows = (await db.execute(series_stmt)).all()
+    series_urls = [
+        {"loc": f"/series/{str(sid)}", "lastmod": str(updated), "type": "series"}
+        for sid, updated in series_rows
+    ]
+
+    return {
+        "urls": post_urls + user_urls + series_urls,
+        "total": len(post_urls) + len(user_urls) + len(series_urls),
+    }
+
+
+# ─── Personalized Feed ──────────────────────────────────────────────────────
+# NOTE: Must be defined before /{post_id}
+
+@router.get("/personalized", response_model=list[PostListItem])
+async def personalized_feed(
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=50),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Personalized feed:
+      - Following users' posts: weight x3
+      - Joined sub-community posts: weight x2
+      - Popular last 7 days: weight x1.5
+      - Time decay: 0.9 per 24h
+    """
+    import math
+
+    now = datetime.now(timezone.utc)
+    seven_days_ago = now - timedelta(days=7)
+
+    # Get followed user IDs
+    follow_stmt = select(Follow.following_id).where(Follow.follower_id == user.id)
+    followed_ids = {r[0] for r in (await db.execute(follow_stmt)).all()}
+
+    # Get joined sub-community IDs
+    sub_stmt = select(SubCommunityMember.sub_community_id).where(SubCommunityMember.user_id == user.id)
+    joined_sub_ids = {r[0] for r in (await db.execute(sub_stmt)).all()}
+
+    # Fetch recent posts (wider pool)
+    stmt = (
+        select(Post, User.nickname, User.plan, UserPoints.total_points)
+        .join(User, Post.user_id == User.id)
+        .outerjoin(UserPoints, UserPoints.user_id == Post.user_id)
+        .where(Post.created_at >= seven_days_ago)
+        .order_by(Post.created_at.desc())
+        .limit(200)
+    )
+    rows = (await db.execute(stmt)).all()
+
+    scored_items = []
+    for post, nickname, plan, pts in rows:
+        score = 1.0
+
+        # Following bonus
+        if post.user_id in followed_ids:
+            score *= 3.0
+
+        # Sub-community bonus
+        if post.sub_community_id and post.sub_community_id in joined_sub_ids:
+            score *= 2.0
+
+        # Engagement bonus
+        engagement = post.like_count * 2 + post.comment_count * 3 + post.view_count
+        if engagement > 50:
+            score *= 1.5
+
+        # Time decay (0.9 per 24h)
+        hours_old = (now - post.created_at).total_seconds() / 3600
+        score *= math.pow(0.9, hours_old / 24)
+
+        scored_items.append((score, post, nickname, plan, pts))
+
+    # Sort by score descending
+    scored_items.sort(key=lambda x: x[0], reverse=True)
+
+    # Paginate
+    start = (page - 1) * size
+    page_items = scored_items[start:start + size]
+
+    return [
+        PostListItem(
+            id=str(post.id),
+            author=_author(post.user_id, nickname, plan, pts),
+            category=post.category,
+            title=post.title,
+            like_count=post.like_count,
+            comment_count=post.comment_count,
+            view_count=post.view_count,
+            has_strategy=post.strategy_id is not None,
+            verified_profit_pct=(
+                post.verified_profit.get("total_return_pct")
+                if post.verified_profit else None
+            ),
+            is_pinned=post.is_pinned,
+            created_at=str(post.created_at),
+        )
+        for _, post, nickname, plan, pts in page_items
+    ]
+
+
 @router.get("/{post_id}", response_model=PostResponse)
 async def get_post(
     post_id: str,
@@ -555,9 +857,13 @@ async def update_post(
         raise HTTPException(404, "게시글을 찾을 수 없습니다.")
 
     if req.title is not None:
-        post.title = req.title
+        post.title = sanitize_text(req.title)
     if req.content is not None:
-        post.content = req.content
+        # Use markdown sanitizer if the post was created with markdown format
+        if getattr(post, 'content_format', 'plain') == "markdown":
+            post.content = sanitize_markdown(req.content)
+        else:
+            post.content = sanitize_content(req.content)
 
     await db.commit()
     await db.refresh(post)
@@ -739,7 +1045,7 @@ async def create_comment(
     comment = Comment(
         post_id=pid,
         user_id=user.id,
-        content=req.content,
+        content=sanitize_text(req.content),
         parent_id=UUID(req.parent_id) if req.parent_id else None,
     )
     db.add(comment)
@@ -820,7 +1126,7 @@ async def update_comment(
     if comment.is_deleted:
         raise HTTPException(400, "삭제된 댓글은 수정할 수 없습니다.")
 
-    comment.content = req.content
+    comment.content = sanitize_text(req.content)
     await db.commit()
     await db.refresh(comment)
 
@@ -901,6 +1207,84 @@ async def copy_strategy_from_post(
     return {"strategy_id": str(new_strategy.id), "message": "전략이 복사되었습니다."}
 
 
+# ─── Reactions ───────────────────────────────────────────────────────────────
+
+class ReactionRequest(BaseModel):
+    emoji: str  # fire, rocket, eyes, thinking, thumbsup, heart
+
+
+class ReactionCountItem(BaseModel):
+    emoji: str
+    count: int
+    reacted: bool = False
+
+
+@router.post("/{post_id}/react")
+async def toggle_reaction(
+    post_id: str,
+    req: ReactionRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    allowed_emojis = {"thumbsup", "heart", "fire", "rocket", "eyes", "thinking"}
+    if req.emoji not in allowed_emojis:
+        raise HTTPException(400, "허용되지 않는 이모지입니다.")
+
+    pid = UUID(post_id)
+    stmt = select(Reaction).where(
+        Reaction.user_id == user.id,
+        Reaction.target_type == "post",
+        Reaction.target_id == pid,
+        Reaction.emoji == req.emoji,
+    )
+    existing = (await db.execute(stmt)).scalar_one_or_none()
+
+    if existing:
+        await db.delete(existing)
+        await db.commit()
+        return {"reacted": False, "emoji": req.emoji}
+    else:
+        db.add(Reaction(
+            user_id=user.id,
+            target_type="post",
+            target_id=pid,
+            emoji=req.emoji,
+        ))
+        await db.commit()
+        return {"reacted": True, "emoji": req.emoji}
+
+
+@router.get("/{post_id}/reactions", response_model=list[ReactionCountItem])
+async def get_reactions(
+    post_id: str,
+    current_user: User | None = Depends(get_current_user_optional),
+    db: AsyncSession = Depends(get_db),
+):
+    pid = UUID(post_id)
+    # Counts per emoji
+    stmt = (
+        select(Reaction.emoji, func.count().label("cnt"))
+        .where(Reaction.target_type == "post", Reaction.target_id == pid)
+        .group_by(Reaction.emoji)
+    )
+    rows = (await db.execute(stmt)).all()
+
+    # Which emojis current user reacted with
+    my_emojis: set = set()
+    if current_user:
+        my_stmt = select(Reaction.emoji).where(
+            Reaction.user_id == current_user.id,
+            Reaction.target_type == "post",
+            Reaction.target_id == pid,
+        )
+        my_emojis = {r[0] for r in (await db.execute(my_stmt)).all()}
+
+    return [
+        ReactionCountItem(emoji=emoji, count=cnt, reacted=emoji in my_emojis)
+        for emoji, cnt in rows
+    ]
+
+
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 def _author(user_id, nickname: str, plan: str, total_points) -> AuthorInfo:
@@ -936,6 +1320,7 @@ async def _to_post_response(post: Post, author: User, db: AsyncSession,
         category=post.category,
         title=post.title,
         content=post.content,
+        content_format=getattr(post, 'content_format', None) or "plain",
         strategy_id=str(post.strategy_id) if post.strategy_id else None,
         strategy_name=strategy_name,
         verified_profit=post.verified_profit,

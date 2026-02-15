@@ -48,6 +48,7 @@ POINT_VALUES = {
     "follower_milestone_100": 500,
     "follower_milestone_500": 1000,
     "follower_milestone_1000": 2000,
+    "referral_milestone": 20,  # Base value; actual amount varies by milestone
 }
 
 # Follower milestones: (threshold, action_key)
@@ -184,6 +185,13 @@ async def award_points(
         description=description or action,
     )
     db.add(log)
+
+    # Check and award badges after points change
+    try:
+        from core.badge_engine import check_and_award_badges
+        await check_and_award_badges(db, user_id)
+    except Exception as e:
+        logger.warning(f"Badge check failed for user {user_id}: {e}")
 
     return user_points
 

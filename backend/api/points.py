@@ -1,6 +1,7 @@
 """
 Points API: my points, history, leaderboard
 """
+import json as _json
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -9,6 +10,7 @@ from db.database import get_db
 from db.models import User, UserPoints, PointLog
 from api.deps import get_current_user
 from core.points import compute_level, next_level_info, LEVEL_THRESHOLDS
+from core.redis_cache import cache_get, cache_set
 
 router = APIRouter(prefix="/api/points", tags=["points"])
 
@@ -76,6 +78,11 @@ async def get_point_history(
 async def get_leaderboard(
     db: AsyncSession = Depends(get_db),
 ):
+    """Leaderboard cached for 10 minutes."""
+    cached = await cache_get("points:leaderboard")
+    if cached:
+        return _json.loads(cached)
+
     stmt = (
         select(UserPoints, User.nickname)
         .join(User, UserPoints.user_id == User.id)
@@ -97,4 +104,30 @@ async def get_leaderboard(
             "level_name": level_name,
         })
 
+    await cache_set("points:leaderboard", _json.dumps(leaderboard), ttl=600)
     return leaderboard
+
+
+@router.get("/level-info")
+async def get_level_info(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Returns detailed level info including progress to next level,
+    color, perks, and the full level config table.
+    """
+    from core.level_config import get_level_progress, get_level_for_points, get_all_levels
+
+    stmt = select(UserPoints).where(UserPoints.user_id == user.id)
+    up = (await db.execute(stmt)).scalar_one_or_none()
+
+    total_points = up.total_points if up else 0
+    current_level = get_level_for_points(total_points)
+    progress = get_level_progress(total_points, current_level)
+    all_levels = get_all_levels()
+
+    return {
+        "current": progress,
+        "all_levels": all_levels,
+    }

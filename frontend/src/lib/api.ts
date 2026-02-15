@@ -99,8 +99,8 @@ class ApiClient {
   getMe() {
     return this.request<import("@/types").User>("/api/auth/me");
   }
-  updateProfile(data: { nickname?: string }) {
-    return this.request<{ id: string; email: string; nickname: string; plan: string }>("/api/auth/profile", {
+  updateProfile(data: { nickname?: string; avatar_url?: string; bio?: string; social_links?: Record<string, string> }) {
+    return this.request<{ id: string; email: string; nickname: string; plan: string; avatar_url: string | null; bio: string | null; social_links: Record<string, string> | null }>("/api/auth/profile", {
       method: "PATCH", body: JSON.stringify(data),
     });
   }
@@ -117,6 +117,28 @@ class ApiClient {
   }
   getFollowing(userId: string, page = 1) {
     return this.request<Array<{ user_id: string; nickname: string }>>(`/api/follows/${userId}/following?page=${page}`);
+  }
+
+  // ─── Email Verification & Password Reset ────────────────────────────
+  verifyEmail(token: string) {
+    return this.request<{ ok: boolean; message: string }>("/api/auth/verify-email", {
+      method: "POST", body: JSON.stringify({ token }),
+    });
+  }
+  resendVerification() {
+    return this.request<{ ok: boolean; message: string }>("/api/auth/resend-verification", {
+      method: "POST",
+    });
+  }
+  forgotPassword(email: string) {
+    return this.request<{ ok: boolean; message: string }>("/api/auth/forgot-password", {
+      method: "POST", body: JSON.stringify({ email }),
+    });
+  }
+  resetPassword(token: string, newPassword: string) {
+    return this.request<{ ok: boolean; message: string }>("/api/auth/reset-password", {
+      method: "POST", body: JSON.stringify({ token, new_password: newPassword }),
+    });
   }
 
   // ─── Keys ──────────────────────────────────────────────────────────
@@ -268,7 +290,7 @@ class ApiClient {
   getPost(id: string) {
     return this.request<import("@/types").Post>(`/api/posts/${id}`);
   }
-  createPost(data: { category: string; title: string; content: string; strategy_id?: string }) {
+  createPost(data: { category: string; title: string; content: string; strategy_id?: string; sub_community_id?: string }) {
     return this.request<import("@/types").Post>("/api/posts", {
       method: "POST", body: JSON.stringify(data),
     });
@@ -444,6 +466,137 @@ class ApiClient {
   // ─── Bot Profit Share ─────────────────────────────────────────────
   shareBotProfit(botId: string) {
     return this.request<{ post_id: string; message: string }>(`/api/bots/${botId}/share-profit`, { method: "POST" });
+  }
+
+  // ─── Community Boards ──────────────────────────────────────────────
+  getCommunities() {
+    return this.request<import("@/types").CommunityBoard[]>("/api/communities");
+  }
+  getCommunity(slug: string) {
+    return this.request<import("@/types").CommunityBoard>(`/api/communities/${slug}`);
+  }
+  getCommunityPosts(slug: string, page = 1) {
+    return this.request<import("@/types").PostListItem[]>(`/api/communities/${slug}/posts?page=${page}`);
+  }
+  joinCommunity(slug: string) {
+    return this.request<{ ok: boolean }>(`/api/communities/${slug}/join`, { method: "POST" });
+  }
+  leaveCommunity(slug: string) {
+    return this.request<{ ok: boolean }>(`/api/communities/${slug}/leave`, { method: "DELETE" });
+  }
+
+  // ─── Sitemap ───────────────────────────────────────────────────────
+  getSitemapPosts() {
+    return this.request<Array<{ id: string; updated_at: string }>>("/api/posts/sitemap");
+  }
+
+  // ─── Reactions ──────────────────────────────────────────────────────
+  toggleReaction(postId: string, emoji: string) {
+    return this.request<{ reacted: boolean; emoji: string }>(`/api/posts/${postId}/react`, {
+      method: "POST", body: JSON.stringify({ emoji }),
+    });
+  }
+  getReactions(postId: string) {
+    return this.request<import("@/types").ReactionCount[]>(`/api/posts/${postId}/reactions`);
+  }
+
+  // ─── Personalized Feed ─────────────────────────────────────────────
+  getPersonalizedFeed(page = 1) {
+    return this.request<import("@/types").PostListItem[]>(`/api/posts/personalized?page=${page}`);
+  }
+
+  // ─── DM ────────────────────────────────────────────────────────────
+  getConversations() {
+    return this.request<import("@/types").Conversation[]>("/api/dm/conversations");
+  }
+  createConversation(userId: string) {
+    return this.request<import("@/types").Conversation>("/api/dm/conversations", {
+      method: "POST", body: JSON.stringify({ user_id: userId }),
+    });
+  }
+  getMessages(conversationId: string, page = 1) {
+    return this.request<import("@/types").DirectMessage[]>(`/api/dm/conversations/${conversationId}/messages?page=${page}`);
+  }
+  sendMessage(conversationId: string, content: string) {
+    return this.request<import("@/types").DirectMessage>(`/api/dm/conversations/${conversationId}/messages`, {
+      method: "POST", body: JSON.stringify({ content }),
+    });
+  }
+  markConversationRead(conversationId: string) {
+    return this.request(`/api/dm/conversations/${conversationId}/read`, { method: "POST" });
+  }
+  getUnreadDMCount() {
+    return this.request<{ count: number }>("/api/dm/unread-count");
+  }
+
+  // ─── Notification Preferences ──────────────────────────────────────
+  getNotificationPreferences() {
+    return this.request<import("@/types").NotificationPreferences>("/api/notifications/preferences");
+  }
+  updateNotificationPreferences(data: Partial<import("@/types").NotificationPreferences>) {
+    return this.request<import("@/types").NotificationPreferences>("/api/notifications/preferences", {
+      method: "PUT", body: JSON.stringify(data),
+    });
+  }
+
+  // ─── Attendance ──────────────────────────────────────────────────────
+  checkIn() {
+    return this.request<import("@/types").AttendanceCheckInResult>("/api/attendance/check-in", { method: "POST" });
+  }
+  getAttendanceStatus() {
+    return this.request<import("@/types").AttendanceStatus>("/api/attendance/status");
+  }
+
+  // ─── Daily Quests ──────────────────────────────────────────────────
+  getDailyQuests() {
+    return this.request<{ quests: import("@/types").DailyQuest[] }>("/api/quests/daily");
+  }
+  claimQuest(questId: string) {
+    return this.request<{ ok: boolean; points: number }>(`/api/quests/claim/${questId}`, { method: "POST" });
+  }
+
+  // ─── Level Info ────────────────────────────────────────────────────
+  getLevelInfo() {
+    return this.request<import("@/types").LevelInfo>("/api/points/level-info");
+  }
+
+  // ─── Series ────────────────────────────────────────────────────────
+  getSeries(page?: number) {
+    return this.request<import("@/types").PostSeriesItem[]>(`/api/series?page=${page || 1}`);
+  }
+  getSeriesDetail(id: string) {
+    return this.request<import("@/types").SeriesDetail>(`/api/series/${id}`);
+  }
+  createSeries(title: string, description: string) {
+    return this.request<import("@/types").PostSeriesItem>("/api/series", {
+      method: "POST", body: JSON.stringify({ title, description }),
+    });
+  }
+  subscribeSeries(id: string) {
+    return this.request<{ ok: boolean; subscribed: boolean }>(`/api/series/${id}/subscribe`, { method: "POST" });
+  }
+
+  // ─── Public Profile ────────────────────────────────────────────────
+  getPublicProfile(nickname: string) {
+    return this.request<import("@/types").PublicProfile>(`/api/auth/user/${nickname}`);
+  }
+
+  // ─── Moderation (Moderator+) ────────────────────────────────────────
+  getModerationQueue(page = 1) {
+    return this.request<{ total: number; items: import("@/types").ModerationQueueItem[] }>(`/api/moderation/queue?page=${page}`);
+  }
+  takeModerationAction(reportId: string, actionType: string, reason?: string) {
+    return this.request<{ ok: boolean; message: string }>("/api/moderation/action", {
+      method: "POST", body: JSON.stringify({ report_id: reportId, action_type: actionType, reason }),
+    });
+  }
+  getModerationHistory(page = 1) {
+    return this.request<import("@/types").ModerationActionItem[]>(`/api/moderation/actions/history?page=${page}`);
+  }
+  changeUserRole(userId: string, role: string) {
+    return this.request<{ ok: boolean; message: string }>(`/api/moderation/admin/user/${userId}/role`, {
+      method: "POST", body: JSON.stringify({ role }),
+    });
   }
 }
 

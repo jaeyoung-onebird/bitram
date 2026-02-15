@@ -4,6 +4,11 @@ export interface User {
   email: string;
   nickname: string;
   plan: "free" | "basic" | "pro" | "premium" | "admin";
+  email_verified: boolean;
+  role: string;
+  avatar_url: string | null;
+  bio: string | null;
+  social_links: Record<string, string> | null;
   telegram_chat_id: string | null;
   created_at: string;
 }
@@ -149,6 +154,8 @@ export interface Author {
   plan: string;
   level?: number;
   level_name?: string;
+  avatar_url?: string | null;
+  bio?: string | null;
 }
 
 export interface Post {
@@ -486,6 +493,159 @@ export interface FollowFeedItem {
   comment_count: number;
   verified_profit_pct: number | null;
   created_at: string;
+}
+
+// ─── Community Board ────────────────────────────────────────────────────────
+export interface CommunityBoard {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  icon: string | null;
+  icon_url: string | null;
+  coin_pair: string | null;
+  coin_symbol: string | null;
+  member_count: number;
+  post_count: number;
+  is_joined: boolean;
+}
+
+// ─── Reaction ──────────────────────────────────────────────────────────────
+export interface ReactionCount {
+  emoji: string;
+  count: number;
+  reacted: boolean;
+}
+
+// ─── DM ────────────────────────────────────────────────────────────────────
+export interface Conversation {
+  id: string;
+  other_user_id: string;
+  other_nickname: string;
+  other_avatar_url: string | null;
+  last_message: string | null;
+  last_message_at: string | null;
+  unread_count: number;
+  created_at: string;
+}
+
+export interface DirectMessage {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  content: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+// ─── Notification Preferences ──────────────────────────────────────────────
+export interface NotificationPreferences {
+  email_on_like: boolean;
+  email_on_comment: boolean;
+  email_on_follow: boolean;
+  email_on_dm: boolean;
+  email_weekly_digest: boolean;
+}
+
+// ─── Moderation ────────────────────────────────────────────────────────────
+export interface ModerationQueueItem {
+  id: string;
+  reporter: string;
+  target_type: string;
+  target_id: string;
+  reason: string;
+  description: string | null;
+  status: string;
+  created_at: string;
+}
+
+export interface ModerationActionItem {
+  id: string;
+  moderator: string;
+  action_type: string;
+  target_type: string;
+  target_id: string;
+  reason: string;
+  created_at: string;
+}
+
+// ─── Attendance ──────────────────────────────────────────────────────────────
+export interface AttendanceStatus {
+  streak: number;
+  checked_today: boolean;
+  total_this_month: number;
+  checked_dates: string[];
+}
+
+export interface AttendanceCheckInResult {
+  points: number;
+  streak: number;
+  bonus: number;
+  checked_dates: string[];
+}
+
+// ─── Daily Quest ─────────────────────────────────────────────────────────────
+export interface DailyQuest {
+  id: string;
+  title: string;
+  description: string;
+  target: number;
+  current: number;
+  points: number;
+  claimed: boolean;
+}
+
+// ─── Level Info ──────────────────────────────────────────────────────────────
+export interface LevelInfo {
+  level: number;
+  name: string;
+  color: string;
+  perks: string[];
+  points_current: number;
+  points_next: number | null;
+  progress: number;
+  next_name: string | null;
+}
+
+// ─── Post Series ─────────────────────────────────────────────────────────────
+export interface PostSeriesItem {
+  id: string;
+  title: string;
+  description: string;
+  cover_image_url: string | null;
+  post_count: number;
+  subscriber_count: number;
+  is_complete: boolean;
+  user: { nickname: string; avatar_url: string | null };
+}
+
+export interface SeriesDetail {
+  id: string;
+  title: string;
+  description: string;
+  cover_image_url: string | null;
+  post_count: number;
+  subscriber_count: number;
+  is_complete: boolean;
+  is_subscribed: boolean;
+  user: { id: string; nickname: string; avatar_url: string | null };
+  posts: PostListItem[];
+}
+
+// ─── Public Profile ──────────────────────────────────────────────────────────
+export interface PublicProfile {
+  nickname: string;
+  avatar_url: string | null;
+  bio: string | null;
+  social_links: Record<string, string> | null;
+  level: number;
+  level_name: string;
+  level_color: string;
+  badges: Array<{ type: string; label: string; awarded_at: string }>;
+  recent_posts: PostListItem[];
+  stats: { post_count: number; follower_count: number; following_count: number; total_likes: number };
+  join_date: string;
+  is_following: boolean;
 }
 
 // ─── Admin ───────────────────────────────────────────────────────────────────

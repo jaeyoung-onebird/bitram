@@ -45,6 +45,31 @@ app.conf.beat_schedule = {
         "task": "tasks.data_tasks.check_expired_subscriptions",
         "schedule": crontab(hour=0, minute=5),
     },
+    "weekly-digest": {
+        "task": "tasks.notification_tasks.send_weekly_digest",
+        "schedule": crontab(hour=0, minute=0, day_of_week="monday"),  # Monday 09:00 KST (00:00 UTC)
+    },
+    # Twitter bot (5 tweets/day, KST active hours)
+    "twitter-morning": {
+        "task": "tasks.twitter_tasks.post_scheduled_tweet",
+        "schedule": crontab(hour=0, minute=30),  # 09:30 KST
+    },
+    "twitter-noon": {
+        "task": "tasks.twitter_tasks.post_scheduled_tweet",
+        "schedule": crontab(hour=3, minute=0),  # 12:00 KST
+    },
+    "twitter-afternoon": {
+        "task": "tasks.twitter_tasks.post_scheduled_tweet",
+        "schedule": crontab(hour=6, minute=0),  # 15:00 KST
+    },
+    "twitter-evening": {
+        "task": "tasks.twitter_tasks.post_scheduled_tweet",
+        "schedule": crontab(hour=9, minute=30),  # 18:30 KST
+    },
+    "twitter-night": {
+        "task": "tasks.twitter_tasks.post_scheduled_tweet",
+        "schedule": crontab(hour=12, minute=0),  # 21:00 KST
+    },
 }
 
 # Auto-discover tasks
