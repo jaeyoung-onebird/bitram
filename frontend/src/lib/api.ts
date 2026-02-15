@@ -556,8 +556,9 @@ class ApiClient {
   }
 
   // ─── Level Info ────────────────────────────────────────────────────
-  getLevelInfo() {
-    return this.request<import("@/types").LevelInfo>("/api/points/level-info");
+  async getLevelInfo(): Promise<import("@/types").LevelInfo> {
+    const data = await this.request<{ current: import("@/types").LevelInfo }>("/api/points/level-info");
+    return data.current;
   }
 
   // ─── Series ────────────────────────────────────────────────────────
