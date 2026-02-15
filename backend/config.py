@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     # Comma-separated URLs. Keep empty to disable.
     NEWS_FEED_URLS: str = ""
     X_FEED_URLS: str = ""
+    X_FEED_USERNAMES: str = "whale_alert,WatcherGuru,CryptoQuant_com,100trillionUSD,VitalikButerin,caborakunCH,lookonchain,AltcoinGordon,BitcoinMagazine,coinaborasCH"
     FEED_TRANSLATION_PROVIDER: str = "claude"  # claude | openai
     FEED_OPENAI_MODEL: str = ""  # optional override for feed translation
     FEED_ANTHROPIC_MODEL: str = "claude-3-haiku-20240307"
