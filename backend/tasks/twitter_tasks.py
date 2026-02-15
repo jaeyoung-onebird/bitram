@@ -35,53 +35,62 @@ def post_scheduled_tweet():
 
 
 async def _post_tweet_async():
-    from db.database import AsyncSessionLocal
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+    from config import get_settings
     from db.models import TweetLog
     from sqlalchemy import select
     from core.tweet_content import pick_content_type, generate_tweet_content
     from core.twitter_client import get_twitter_client
 
+    settings = get_settings()
     twitter = get_twitter_client()
 
-    async with AsyncSessionLocal() as db:
-        # Get recent tweet types for dedup
-        recent_stmt = (
-            select(TweetLog.content_type)
-            .order_by(TweetLog.created_at.desc())
-            .limit(3)
-        )
-        recent_result = await db.execute(recent_stmt)
-        recent_types = [r[0] for r in recent_result.all()]
+    # Create a fresh engine+session for this event loop (avoids loop conflict in Celery fork)
+    task_engine = create_async_engine(settings.DATABASE_URL, pool_size=2, max_overflow=0)
+    TaskSession = async_sessionmaker(task_engine, class_=AsyncSession, expire_on_commit=False)
 
-        # Pick content type and generate
-        content_type = pick_content_type(recent_types)
-        final_type, tweet_text = await generate_tweet_content(
-            content_type, db=db,
-        )
+    try:
+        async with TaskSession() as db:
+            # Get recent tweet types for dedup
+            recent_stmt = (
+                select(TweetLog.content_type)
+                .order_by(TweetLog.created_at.desc())
+                .limit(3)
+            )
+            recent_result = await db.execute(recent_stmt)
+            recent_types = [r[0] for r in recent_result.all()]
 
-        if not tweet_text:
-            logger.warning("No tweet content generated, skipping")
-            return
+            # Pick content type and generate
+            content_type = pick_content_type(recent_types)
+            final_type, tweet_text = await generate_tweet_content(
+                content_type, db=db,
+            )
 
-        # Post the tweet
-        result = twitter.post_tweet(tweet_text)
+            if not tweet_text:
+                logger.warning("No tweet content generated, skipping")
+                return
 
-        # Log to database
-        if "id" in result:
-            status = "posted"
-        elif result.get("skipped"):
-            status = "skipped"
-        else:
-            status = "failed"
+            # Post the tweet
+            result = twitter.post_tweet(tweet_text)
 
-        tweet_log = TweetLog(
-            content_type=final_type,
-            content=tweet_text,
-            tweet_id=result.get("id"),
-            status=status,
-            error_message=result.get("error"),
-        )
-        db.add(tweet_log)
-        await db.commit()
+            # Log to database
+            if "id" in result:
+                status = "posted"
+            elif result.get("skipped"):
+                status = "skipped"
+            else:
+                status = "failed"
 
-        logger.info(f"Tweet {status}: type={final_type}, id={result.get('id', 'N/A')}")
+            tweet_log = TweetLog(
+                content_type=final_type,
+                content=tweet_text,
+                tweet_id=result.get("id"),
+                status=status,
+                error_message=result.get("error"),
+            )
+            db.add(tweet_log)
+            await db.commit()
+
+            logger.info(f"Tweet {status}: type={final_type}, id={result.get('id', 'N/A')}")
+    finally:
+        await task_engine.dispose()
