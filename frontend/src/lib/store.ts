@@ -14,10 +14,8 @@ interface AuthState {
     social_links?: Record<string, string> | null;
     telegram_chat_id?: string | null;
   } | null;
-  accessToken: string | null;
-  refreshToken: string | null;
   isAuthenticated: boolean;
-  setAuth: (user: AuthState["user"], accessToken: string, refreshToken: string) => void;
+  setAuth: (user: AuthState["user"]) => void;
   updateUser: (data: Partial<NonNullable<AuthState["user"]>>) => void;
   logout: () => void;
 }
@@ -26,15 +24,13 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
-      accessToken: null,
-      refreshToken: null,
       isAuthenticated: false,
-      setAuth: (user, accessToken, refreshToken) =>
-        set({ user, accessToken, refreshToken, isAuthenticated: true }),
+      setAuth: (user) =>
+        set({ user, isAuthenticated: true }),
       updateUser: (data) =>
         set((s) => ({ user: s.user ? { ...s.user, ...data } : null })),
       logout: () =>
-        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false }),
+        set({ user: null, isAuthenticated: false }),
     }),
     { name: "bitram-auth" }
   )

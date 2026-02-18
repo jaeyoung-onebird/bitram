@@ -4,10 +4,11 @@ BITRAM - Main Application
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import get_settings
-from db.database import engine, Base
+from db.database import engine
 
 # Import all routers
 from api.auth import router as auth_router
@@ -61,15 +62,8 @@ if settings.SENTRY_DSN:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: create tables
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-        try:
-            await conn.execute(
-                "SELECT create_hypertable('ohlcv', 'time', if_not_exists => TRUE)"
-            )
-        except Exception:
-            pass
+    # DB schema/extension provisioning is handled by migrations/init scripts.
+    # Keep runtime startup side-effect free.
 
     # Seed sample strategies
     try:
@@ -139,6 +133,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; img-src 'self' data: https:; "
+        "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; "
+        "style-src 'self' 'unsafe-inline'; connect-src 'self' https: wss:;",
+    )
+    return response
 
 # Register routers
 app.include_router(auth_router)

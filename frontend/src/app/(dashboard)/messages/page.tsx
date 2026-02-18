@@ -2,35 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { MessageCircle, Search, X, Loader2 } from "lucide-react";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-
-function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const stored = localStorage.getItem("bitram-auth");
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return parsed?.state?.accessToken || null;
-    }
-  } catch {}
-  return null;
-}
-
-async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getToken();
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...((options.headers as Record<string, string>) || {}),
-  };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(typeof err.detail === "string" ? err.detail : JSON.stringify(err));
-  }
-  return res.json();
-}
+import { api } from "@/lib/api";
 
 interface Conversation {
   id: string;
@@ -39,12 +11,9 @@ interface Conversation {
     nickname: string;
     avatar_url?: string | null;
   };
-  last_message?: {
-    content: string;
-    created_at: string;
-  } | null;
+  last_message?: string | null;
+  last_message_at?: string | null;
   unread_count: number;
-  updated_at: string;
 }
 
 interface UserSearchItem {
@@ -83,7 +52,7 @@ export default function MessagesPage() {
 
   const fetchConversations = useCallback(async () => {
     try {
-      const data = await apiFetch<Conversation[]>("/api/dm/conversations");
+      const data = await api.getConversations();
       setConversations(data);
     } catch {
       // silently handle
@@ -100,9 +69,7 @@ export default function MessagesPage() {
     if (!searchQuery.trim()) return;
     setSearching(true);
     try {
-      const data = await apiFetch<UserSearchItem[]>(
-        `/api/search/users?q=${encodeURIComponent(searchQuery.trim())}&page=1`
-      );
+      const data = await api.searchUsers(searchQuery.trim(), 1);
       setSearchResults(data);
     } catch {
       setSearchResults([]);
@@ -114,10 +81,7 @@ export default function MessagesPage() {
   const handleStartConversation = async (userId: string) => {
     setCreating(true);
     try {
-      const data = await apiFetch<{ id: string }>("/api/dm/conversations", {
-        method: "POST",
-        body: JSON.stringify({ user_id: userId }),
-      });
+      const data = await api.createConversation(userId);
       setShowNewModal(false);
       setSearchQuery("");
       setSearchResults([]);
@@ -183,18 +147,18 @@ export default function MessagesPage() {
                       <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
                         {conv.other_user.nickname}
                       </span>
-                      {conv.last_message?.created_at && (
+                      {conv.last_message_at && (
                         <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0">
-                          {timeAgo(conv.last_message.created_at)}
+                          {timeAgo(conv.last_message_at)}
                         </span>
                       )}
                     </div>
                     <div className="flex items-center justify-between gap-2 mt-0.5">
                       <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
-                        {conv.last_message?.content
-                          ? conv.last_message.content.length > 50
-                            ? conv.last_message.content.slice(0, 50) + "..."
-                            : conv.last_message.content
+                        {conv.last_message
+                          ? conv.last_message.length > 50
+                            ? conv.last_message.slice(0, 50) + "..."
+                            : conv.last_message
                           : "메시지가 없습니다"}
                       </p>
                       {conv.unread_count > 0 && (

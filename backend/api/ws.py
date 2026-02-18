@@ -118,7 +118,7 @@ async def bot_websocket(websocket: WebSocket, bot_id: str):
     try:
         while True:
             # Send bot status every 5 seconds
-            active = get_active_bots()
+            active = await get_active_bots()
             is_running = active.get(bot_id, False)
             await websocket.send_json({
                 "type": "status_update",

@@ -3,10 +3,14 @@ BITRAM Bot Manager
 Manages bot lifecycle: start, stop, pause, execute strategy cycles.
 """
 import asyncio
+import json
 import logging
+import os
+import socket
 from datetime import datetime, timezone
 from decimal import Decimal
 from uuid import UUID
+from uuid import uuid4
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +18,7 @@ from db.models import Bot, Trade, Strategy, ExchangeKey
 from core.upbit_client import UpbitClient
 from core.strategy_engine import evaluate_strategy
 from core.encryption import decrypt_key
+from core.redis_cache import get_redis
 from config import get_settings
 import pandas as pd
 
@@ -21,10 +26,88 @@ logger = logging.getLogger(__name__)
 
 # Active bot tasks: {bot_id: asyncio.Task}
 _active_bots: dict[str, asyncio.Task] = {}
+_bot_lock_tokens: dict[str, str] = {}
 
 # Kill switch: consecutive error count per bot
 _error_counts: dict[str, int] = {}
 MAX_CONSECUTIVE_ERRORS = 5
+
+BOT_LOCK_TTL_SEC = 300
+BOT_RUNTIME_TTL_SEC = 600
+INSTANCE_ID = f"{socket.gethostname()}:{os.getpid()}"
+
+
+def _bot_lock_key(bot_id: str) -> str:
+    return f"bot:lock:{bot_id}"
+
+
+def _bot_runtime_key(bot_id: str) -> str:
+    return f"bot:runtime:{bot_id}"
+
+
+async def _set_runtime_state(bot_id: str, status: str, detail: str | None = None):
+    payload = {
+        "status": status,
+        "instance_id": INSTANCE_ID,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if detail:
+        payload["detail"] = detail
+    try:
+        r = await get_redis()
+        await r.setex(_bot_runtime_key(bot_id), BOT_RUNTIME_TTL_SEC, json.dumps(payload))
+    except Exception as e:
+        logger.warning(f"Redis runtime state update failed for bot {bot_id}: {e}")
+
+
+async def _acquire_bot_lock(bot_id: str, token: str) -> bool:
+    try:
+        r = await get_redis()
+        return bool(await r.set(_bot_lock_key(bot_id), token, ex=BOT_LOCK_TTL_SEC, nx=True))
+    except Exception as e:
+        logger.error(f"Redis lock acquire failed for bot {bot_id}: {e}")
+        return False
+
+
+async def _refresh_bot_lock(bot_id: str, token: str):
+    if not token:
+        return
+    try:
+        r = await get_redis()
+        # Extend lock TTL only if we still own the lock.
+        script = """
+        if redis.call('get', KEYS[1]) == ARGV[1] then
+            return redis.call('expire', KEYS[1], ARGV[2])
+        end
+        return 0
+        """
+        await r.eval(script, 1, _bot_lock_key(bot_id), token, BOT_LOCK_TTL_SEC)
+    except Exception as e:
+        logger.warning(f"Redis lock refresh failed for bot {bot_id}: {e}")
+
+
+async def _release_bot_lock(bot_id: str, token: str | None):
+    if not token:
+        return
+    try:
+        r = await get_redis()
+        script = """
+        if redis.call('get', KEYS[1]) == ARGV[1] then
+            return redis.call('del', KEYS[1])
+        end
+        return 0
+        """
+        await r.eval(script, 1, _bot_lock_key(bot_id), token)
+    except Exception as e:
+        logger.warning(f"Redis lock release failed for bot {bot_id}: {e}")
+
+
+async def _clear_runtime_state(bot_id: str):
+    try:
+        r = await get_redis()
+        await r.delete(_bot_runtime_key(bot_id))
+    except Exception as e:
+        logger.warning(f"Redis runtime state cleanup failed for bot {bot_id}: {e}")
 
 
 async def start_bot(bot_id: UUID, db: AsyncSession):
@@ -32,12 +115,21 @@ async def start_bot(bot_id: UUID, db: AsyncSession):
     bot_id_str = str(bot_id)
     if bot_id_str in _active_bots and not _active_bots[bot_id_str].done():
         return {"error": "봇이 이미 실행 중입니다."}
+    lock_token = f"{INSTANCE_ID}:{uuid4()}"
+    acquired = await _acquire_bot_lock(bot_id_str, lock_token)
+    if not acquired:
+        return {"error": "다른 워커에서 이미 실행 중이거나 락을 획득하지 못했습니다."}
+    _bot_lock_tokens[bot_id_str] = lock_token
+    await _set_runtime_state(bot_id_str, "starting")
 
     # Load bot with strategy and keys
     stmt = select(Bot).where(Bot.id == bot_id)
     result = await db.execute(stmt)
     bot = result.scalar_one_or_none()
     if not bot:
+        await _clear_runtime_state(bot_id_str)
+        await _release_bot_lock(bot_id_str, lock_token)
+        _bot_lock_tokens.pop(bot_id_str, None)
         return {"error": "봇을 찾을 수 없습니다."}
 
     # Load strategy
@@ -45,6 +137,9 @@ async def start_bot(bot_id: UUID, db: AsyncSession):
     result = await db.execute(stmt)
     strategy = result.scalar_one_or_none()
     if not strategy:
+        await _clear_runtime_state(bot_id_str)
+        await _release_bot_lock(bot_id_str, lock_token)
+        _bot_lock_tokens.pop(bot_id_str, None)
         return {"error": "전략을 찾을 수 없습니다."}
 
     # Load exchange key
@@ -52,6 +147,9 @@ async def start_bot(bot_id: UUID, db: AsyncSession):
     result = await db.execute(stmt)
     key = result.scalar_one_or_none()
     if not key:
+        await _clear_runtime_state(bot_id_str)
+        await _release_bot_lock(bot_id_str, lock_token)
+        _bot_lock_tokens.pop(bot_id_str, None)
         return {"error": "API 키를 찾을 수 없습니다."}
 
     # Decrypt keys
@@ -74,9 +172,11 @@ async def start_bot(bot_id: UUID, db: AsyncSession):
     task = asyncio.create_task(
         _bot_loop(bot_id, strategy.config_json, strategy.pair, strategy.timeframe,
                   access_key, secret_key, float(bot.max_investment),
-                  paper=settings.PAPER_TRADING, fee_rate=settings.UPBIT_FEE_RATE)
+                  paper=settings.PAPER_TRADING, fee_rate=settings.UPBIT_FEE_RATE,
+                  lock_token=lock_token)
     )
     _active_bots[bot_id_str] = task
+    await _set_runtime_state(bot_id_str, "running")
 
     mode = "모의매매" if settings.PAPER_TRADING else "실매매"
     logger.info(f"Bot {bot_id} started in {mode} mode")
@@ -91,6 +191,7 @@ async def stop_bot(bot_id: UUID, db: AsyncSession):
         task.cancel()
 
     _error_counts.pop(bot_id_str, None)
+    lock_token = _bot_lock_tokens.pop(bot_id_str, None)
 
     stmt = update(Bot).where(Bot.id == bot_id).values(
         status="stopped",
@@ -98,6 +199,8 @@ async def stop_bot(bot_id: UUID, db: AsyncSession):
     )
     await db.execute(stmt)
     await db.commit()
+    await _clear_runtime_state(bot_id_str)
+    await _release_bot_lock(bot_id_str, lock_token)
     return {"status": "stopped"}
 
 
@@ -109,16 +212,32 @@ async def pause_bot(bot_id: UUID, db: AsyncSession):
         task.cancel()
 
     _error_counts.pop(bot_id_str, None)
+    lock_token = _bot_lock_tokens.pop(bot_id_str, None)
 
     stmt = update(Bot).where(Bot.id == bot_id).values(status="paused")
     await db.execute(stmt)
     await db.commit()
+    await _clear_runtime_state(bot_id_str)
+    await _release_bot_lock(bot_id_str, lock_token)
     return {"status": "paused"}
 
 
-def get_active_bots() -> dict:
+async def get_active_bots() -> dict:
     """Get dict of active bot IDs and their running status."""
-    return {bid: not task.done() for bid, task in _active_bots.items()}
+    active = {bid: not task.done() for bid, task in _active_bots.items()}
+    try:
+        r = await get_redis()
+        async for key in r.scan_iter(match="bot:runtime:*"):
+            bot_id = key.split("bot:runtime:", 1)[-1]
+            raw = await r.get(key)
+            if not raw:
+                continue
+            data = json.loads(raw)
+            is_running = data.get("status") == "running"
+            active[bot_id] = active.get(bot_id, False) or is_running
+    except Exception as e:
+        logger.warning(f"Redis active bot scan failed: {e}")
+    return active
 
 
 # ─── Bot Execution Loop ─────────────────────────────────────────────────────
@@ -131,7 +250,7 @@ TIMEFRAME_SECONDS = {
 
 async def _bot_loop(bot_id: UUID, config: dict, pair: str, timeframe: str,
                     access_key: str, secret_key: str, max_investment: float,
-                    paper: bool = True, fee_rate: float = 0.0005):
+                    paper: bool = True, fee_rate: float = 0.0005, lock_token: str | None = None):
     """Main bot execution loop."""
     client = UpbitClient(access_key, secret_key)
     interval = TIMEFRAME_SECONDS.get(timeframe, 900)
@@ -153,6 +272,8 @@ async def _bot_loop(bot_id: UUID, config: dict, pair: str, timeframe: str,
                 )
                 # Reset error count on successful cycle
                 _error_counts[bot_id_str] = 0
+                await _set_runtime_state(bot_id_str, "running")
+                await _refresh_bot_lock(bot_id_str, lock_token or "")
 
             except asyncio.CancelledError:
                 raise
@@ -174,6 +295,11 @@ async def _bot_loop(bot_id: UUID, config: dict, pair: str, timeframe: str,
     except asyncio.CancelledError:
         logger.info(f"Bot {bot_id} cancelled")
     finally:
+        # Ensure distributed runtime state is cleaned up even on unexpected exits.
+        await _clear_runtime_state(bot_id_str)
+        if bot_id_str in _bot_lock_tokens:
+            token = _bot_lock_tokens.pop(bot_id_str, None)
+            await _release_bot_lock(bot_id_str, token)
         await client.close()
 
 
@@ -184,6 +310,7 @@ async def _auto_stop_bot(bot_id: UUID):
 
     _active_bots.pop(bot_id_str, None)
     _error_counts.pop(bot_id_str, None)
+    token = _bot_lock_tokens.pop(bot_id_str, None)
 
     async with AsyncSessionLocal() as db:
         stmt = update(Bot).where(Bot.id == bot_id).values(
@@ -193,6 +320,8 @@ async def _auto_stop_bot(bot_id: UUID):
         )
         await db.execute(stmt)
         await db.commit()
+    await _clear_runtime_state(bot_id_str)
+    await _release_bot_lock(bot_id_str, token)
 
 
 # ─── Order Helpers ───────────────────────────────────────────────────────────

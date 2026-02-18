@@ -4,7 +4,7 @@ Auth API: register, login, refresh, me, profile, password,
 """
 import secrets
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -18,8 +18,10 @@ from api.deps import (
 )
 from core.points import compute_level, next_level_info
 from middleware.rate_limit import rate_limit
+from config import get_settings
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+settings = get_settings()
 
 
 class RegisterRequest(BaseModel):
@@ -35,7 +37,7 @@ class LoginRequest(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str
+    refresh_token: str | None = None
 
 
 class UserInfo(BaseModel):
@@ -89,9 +91,41 @@ def _user_info(user: User) -> UserInfo:
     )
 
 
+def _set_auth_cookies(response: Response, access_token: str, refresh_token: str):
+    secure = settings.APP_ENV != "development"
+    response.set_cookie(
+        key="bitram_access_token",
+        value=access_token,
+        httponly=True,
+        secure=secure,
+        samesite="lax",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+    response.set_cookie(
+        key="bitram_refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=secure,
+        samesite="lax",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        path="/",
+    )
+
+
+def _clear_auth_cookies(response: Response):
+    response.delete_cookie("bitram_access_token", path="/")
+    response.delete_cookie("bitram_refresh_token", path="/")
+
+
 @router.post("/register", response_model=AuthResponse)
 @rate_limit(max_calls=3, period=60, key_func="ip")
-async def register(req: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def register(
+    req: RegisterRequest,
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
     # Check existing
     stmt = select(User).where(User.email == req.email)
     result = await db.execute(stmt)
@@ -143,16 +177,24 @@ async def register(req: RegisterRequest, request: Request, db: AsyncSession = De
         except Exception:
             pass
 
+    access_token = create_access_token(str(user.id))
+    refresh_token = create_refresh_token(str(user.id))
+    _set_auth_cookies(response, access_token, refresh_token)
     return AuthResponse(
-        access_token=create_access_token(str(user.id)),
-        refresh_token=create_refresh_token(str(user.id)),
+        access_token=access_token,
+        refresh_token=refresh_token,
         user=_user_info(user),
     )
 
 
 @router.post("/login", response_model=AuthResponse)
 @rate_limit(max_calls=5, period=60, key_func="ip")
-async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def login(
+    req: LoginRequest,
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
     stmt = select(User).where(User.email == req.email)
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
@@ -169,24 +211,48 @@ async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(
     except Exception:
         pass
 
+    access_token = create_access_token(str(user.id))
+    refresh_token = create_refresh_token(str(user.id))
+    _set_auth_cookies(response, access_token, refresh_token)
     return AuthResponse(
-        access_token=create_access_token(str(user.id)),
-        refresh_token=create_refresh_token(str(user.id)),
+        access_token=access_token,
+        refresh_token=refresh_token,
         user=_user_info(user),
     )
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh(req: RefreshRequest):
-    payload = decode_token(req.refresh_token)
+async def refresh(req: RefreshRequest, request: Request, response: Response):
+    refresh_token = req.refresh_token or request.cookies.get("bitram_refresh_token")
+    if not refresh_token:
+        raise HTTPException(401, "리프레시 토큰이 없습니다.")
+
+    payload = decode_token(refresh_token)
     if payload.get("type") != "refresh":
         raise HTTPException(401, "유효하지 않은 리프레시 토큰입니다.")
 
     user_id = payload["sub"]
+    access_token = create_access_token(user_id)
+    new_refresh_token = create_refresh_token(user_id)
+    _set_auth_cookies(response, access_token, new_refresh_token)
     return TokenResponse(
-        access_token=create_access_token(user_id),
-        refresh_token=create_refresh_token(user_id),
+        access_token=access_token,
+        refresh_token=new_refresh_token,
     )
+
+
+@router.post("/logout")
+async def logout():
+    response = {"ok": True}
+    from fastapi.responses import JSONResponse
+    res = JSONResponse(content=response)
+    _clear_auth_cookies(res)
+    return res
+
+
+@router.post("/ws-token")
+async def issue_ws_token(user: User = Depends(get_current_user)):
+    return {"access_token": create_access_token(str(user.id))}
 
 
 @router.get("/me", response_model=UserResponse)

@@ -3,7 +3,7 @@ API Dependencies: authentication, database session, plan limits.
 """
 from datetime import datetime, timezone, timedelta
 from uuid import UUID
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from passlib.context import CryptContext
@@ -14,7 +14,7 @@ from config import get_settings
 from db.database import get_db
 from db.models import User
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 optional_security = HTTPBearer(auto_error=False)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 settings = get_settings()
@@ -52,10 +52,20 @@ def decode_token(token: str) -> dict:
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    payload = decode_token(credentials.credentials)
+    token: str | None = None
+    if credentials and credentials.credentials:
+        token = credentials.credentials
+    elif request.cookies.get("bitram_access_token"):
+        token = request.cookies.get("bitram_access_token")
+
+    if not token:
+        raise HTTPException(status_code=401, detail="인증 토큰이 없습니다.")
+
+    payload = decode_token(token)
     if payload.get("type") != "access":
         raise HTTPException(status_code=401, detail="유효하지 않은 토큰 타입입니다.")
 
@@ -90,13 +100,20 @@ async def get_current_moderator(
 
 
 async def get_current_user_optional(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(optional_security),
     db: AsyncSession = Depends(get_db),
 ) -> User | None:
-    if credentials is None:
+    token: str | None = None
+    if credentials and credentials.credentials:
+        token = credentials.credentials
+    elif request.cookies.get("bitram_access_token"):
+        token = request.cookies.get("bitram_access_token")
+
+    if not token:
         return None
     try:
-        payload = decode_token(credentials.credentials)
+        payload = decode_token(token)
         if payload.get("type") != "access":
             return None
         user_id = payload.get("sub")

@@ -1,19 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-
-function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const stored = localStorage.getItem("bitram-auth");
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return parsed?.state?.accessToken || null;
-    }
-  } catch {}
-  return null;
-}
+import { api } from "@/lib/api";
 
 export default function MessageBadge() {
   const [count, setCount] = useState(0);
@@ -23,16 +10,7 @@ export default function MessageBadge() {
 
     const fetchCount = async () => {
       try {
-        const token = getToken();
-        if (!token) return;
-        const res = await fetch(`${API_URL}/api/dm/unread-count`, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (!res.ok) return;
-        const data = await res.json();
+        const data = await api.getUnreadDMCount();
         if (mounted) setCount(data.count ?? 0);
       } catch {}
     };

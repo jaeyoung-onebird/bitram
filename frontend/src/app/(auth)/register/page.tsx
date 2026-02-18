@@ -30,7 +30,7 @@ function RegisterForm() {
     setLoading(true);
     try {
       const res = await api.register(form.email, form.password, form.nickname, refCode || undefined);
-      setAuth(res.user, res.access_token, res.refresh_token);
+      setAuth(res.user);
       router.push("/dashboard");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "회원가입에 실패했습니다.");

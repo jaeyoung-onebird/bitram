@@ -520,13 +520,15 @@ export interface ReactionCount {
 // ─── DM ────────────────────────────────────────────────────────────────────
 export interface Conversation {
   id: string;
-  other_user_id: string;
-  other_nickname: string;
-  other_avatar_url: string | null;
+  other_user: {
+    id: string;
+    nickname: string;
+    avatar_url: string | null;
+  };
   last_message: string | null;
   last_message_at: string | null;
   unread_count: number;
-  created_at: string;
+  created_at?: string;
 }
 
 export interface DirectMessage {

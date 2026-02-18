@@ -19,7 +19,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await api.login(email, password);
-      setAuth(res.user, res.access_token, res.refresh_token);
+      setAuth(res.user);
       router.push("/dashboard");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "로그인에 실패했습니다.");

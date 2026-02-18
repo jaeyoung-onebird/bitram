@@ -1,47 +1,21 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 class ApiClient {
-  private _token: string | null = null;
-
-  setToken(token: string | null) {
-    this._token = token;
-  }
-
-  private getToken(): string | null {
-    if (this._token) return this._token;
-    if (typeof window === "undefined") return null;
-    try {
-      const stored = localStorage.getItem("bitram-auth");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return parsed?.state?.accessToken || null;
-      }
-    } catch {}
-    return null;
-  }
-
   private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const token = this.getToken();
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       ...((options.headers as Record<string, string>) || {}),
     };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+    const res = await fetch(`${API_URL}${path}`, { ...options, headers, credentials: "include" });
 
     if (res.status === 401) {
       // Try refresh
       const refreshed = await this.tryRefresh();
       if (refreshed) {
-        headers["Authorization"] = `Bearer ${refreshed}`;
-        const retry = await fetch(`${API_URL}${path}`, { ...options, headers });
+        const retry = await fetch(`${API_URL}${path}`, { ...options, headers, credentials: "include" });
         if (!retry.ok) throw new Error(await retry.text());
         return retry.json();
-      }
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("bitram-auth");
-        window.location.href = "/login";
       }
       throw new Error("Unauthorized");
     }
@@ -64,21 +38,14 @@ class ApiClient {
 
   private async tryRefresh(): Promise<string | null> {
     try {
-      const stored = localStorage.getItem("bitram-auth");
-      if (!stored) return null;
-      const { state } = JSON.parse(stored);
-      if (!state?.refreshToken) return null;
-
       const res = await fetch(`${API_URL}/api/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: state.refreshToken }),
+        credentials: "include",
       });
       if (!res.ok) return null;
 
       const data = await res.json();
-      const newState = { ...state, accessToken: data.access_token, refreshToken: data.refresh_token };
-      localStorage.setItem("bitram-auth", JSON.stringify({ state: newState }));
       return data.access_token;
     } catch {
       return null;
@@ -94,6 +61,16 @@ class ApiClient {
   login(email: string, password: string) {
     return this.request<{ access_token: string; refresh_token: string; user: { id: string; email: string; nickname: string; plan: string } }>("/api/auth/login", {
       method: "POST", body: JSON.stringify({ email, password }),
+    });
+  }
+  logout() {
+    return this.request<{ ok: boolean }>("/api/auth/logout", {
+      method: "POST",
+    });
+  }
+  getWSToken() {
+    return this.request<{ access_token: string }>("/api/auth/ws-token", {
+      method: "POST",
     });
   }
   getMe() {
@@ -391,13 +368,10 @@ class ApiClient {
 
   // ─── Image Upload ────────────────────────────────────────────────
   async uploadImage(file: File): Promise<{ url: string }> {
-    const token = this.getToken();
     const formData = new FormData();
     formData.append("file", file);
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
     const res = await fetch(`${API_URL}/api/upload/image`, {
-      method: "POST", headers, body: formData,
+      method: "POST", body: formData, credentials: "include",
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: "업로드 실패" }));

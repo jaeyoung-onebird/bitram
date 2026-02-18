@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/store";
 import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
 import BitramLogo from "@/components/brand/BitramLogo";
 import NotificationBell from "@/components/NotificationBell";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -33,6 +34,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const router = useRouter();
   const { user, isAuthenticated, logout } = useAuthStore();
+  const handleLogout = async () => {
+    try {
+      await api.logout();
+    } catch {
+      // no-op
+    } finally {
+      logout();
+      router.push("/login");
+    }
+  };
   const [mounted, setMounted] = useState(false);
   const navItems = user?.plan === "admin"
     ? [...CORE_NAV_ITEMS, { href: "/admin", label: "관리자", icon: ShieldCheck }]
@@ -108,8 +119,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </Link>
-            <button onClick={logout} aria-label="로그아웃" className="hidden sm:inline-flex text-xs px-2 py-1 rounded-md text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">로그아웃</button>
-            <button onClick={logout} aria-label="로그아웃" className="sm:hidden p-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+            <button onClick={handleLogout} aria-label="로그아웃" className="hidden sm:inline-flex text-xs px-2 py-1 rounded-md text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">로그아웃</button>
+            <button onClick={handleLogout} aria-label="로그아웃" className="sm:hidden p-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
               <LogOut className="w-5 h-5" />
             </button>
           </div>

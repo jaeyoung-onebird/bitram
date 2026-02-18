@@ -3,35 +3,9 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Send, Loader2 } from "lucide-react";
 import { useAuthStore } from "@/lib/store";
+import { api } from "@/lib/api";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-
-function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const stored = localStorage.getItem("bitram-auth");
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return parsed?.state?.accessToken || null;
-    }
-  } catch {}
-  return null;
-}
-
-async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getToken();
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...((options.headers as Record<string, string>) || {}),
-  };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(typeof err.detail === "string" ? err.detail : JSON.stringify(err));
-  }
-  return res.json();
-}
 
 interface Message {
   id: string;
@@ -100,9 +74,14 @@ export default function DMChatPage() {
 
     const fetchData = async () => {
       try {
+        const conversations = await api.getConversations();
+        const conversationItem = conversations.find((item) => item.id === conversationId);
+        if (!conversationItem) {
+          throw new Error("대화를 찾을 수 없습니다.");
+        }
         const [convData, msgData] = await Promise.all([
-          apiFetch<ConversationDetail>(`/api/dm/conversations/${conversationId}`),
-          apiFetch<Message[]>(`/api/dm/conversations/${conversationId}/messages`),
+          Promise.resolve(conversationItem as ConversationDetail),
+          api.getMessages(conversationId),
         ]);
         if (mounted) {
           setConversation(convData);
@@ -118,7 +97,7 @@ export default function DMChatPage() {
     fetchData();
 
     // Mark as read
-    apiFetch(`/api/dm/conversations/${conversationId}/read`, { method: "POST" }).catch(() => {});
+    api.markConversationRead(conversationId).catch(() => {});
 
     return () => {
       mounted = false;
@@ -133,46 +112,58 @@ export default function DMChatPage() {
   // WebSocket connection
   useEffect(() => {
     if (!user?.id) return;
-    const token = getToken();
-    if (!token) return;
+    let mounted = true;
 
-    // Determine WS URL
-    let wsBase = API_URL.replace(/^http/, "ws");
-    if (!wsBase) {
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      wsBase = `${protocol}//${window.location.host}`;
-    }
-
-    const ws = new WebSocket(`${wsBase}/ws/dm/${user.id}?token=${token}`);
-    wsRef.current = ws;
-
-    ws.onmessage = (event) => {
+    const connect = async () => {
       try {
-        const data = JSON.parse(event.data);
-        if (data.type === "dm_message" && data.conversation_id === conversationId) {
-          const newMsg: Message = {
-            id: data.id || crypto.randomUUID(),
-            sender_id: data.sender_id,
-            content: data.content,
-            created_at: data.created_at || new Date().toISOString(),
-            is_read: true,
-          };
-          setMessages((prev) => [...prev, newMsg]);
-          // Mark as read
-          apiFetch(`/api/dm/conversations/${conversationId}/read`, { method: "POST" }).catch(() => {});
+        const { access_token: token } = await api.getWSToken();
+        if (!token || !mounted) return;
+
+        // Determine WS URL
+        let wsBase = API_URL.replace(/^http/, "ws");
+        if (!wsBase) {
+          const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+          wsBase = `${protocol}//${window.location.host}`;
         }
+
+        const ws = new WebSocket(`${wsBase}/ws/dm/${user.id}?token=${token}`);
+        wsRef.current = ws;
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === "dm_message" && data.conversation_id === conversationId) {
+              const newMsg: Message = {
+                id: data.id || crypto.randomUUID(),
+                sender_id: data.sender_id,
+                content: data.content,
+                created_at: data.created_at || new Date().toISOString(),
+                is_read: true,
+              };
+              setMessages((prev) => [...prev, newMsg]);
+              // Mark as read
+              api.markConversationRead(conversationId).catch(() => {});
+            }
+          } catch {
+            // ignore parse errors
+          }
+        };
+
+        ws.onerror = () => {
+          // silently handle
+        };
       } catch {
-        // ignore parse errors
+        // silently handle
       }
     };
-
-    ws.onerror = () => {
-      // silently handle
-    };
+    connect();
 
     return () => {
-      ws.close();
-      wsRef.current = null;
+      mounted = false;
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
     };
   }, [user?.id, conversationId]);
 
@@ -194,13 +185,7 @@ export default function DMChatPage() {
     setMessages((prev) => [...prev, tempMsg]);
 
     try {
-      const sent = await apiFetch<Message>(
-        `/api/dm/conversations/${conversationId}/messages`,
-        {
-          method: "POST",
-          body: JSON.stringify({ content }),
-        }
-      );
+      const sent = await api.sendMessage(conversationId, content);
       // Replace temp message with real one
       setMessages((prev) =>
         prev.map((m) => (m.id === tempMsg.id ? sent : m))
