@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import type {
   Bot,
+  CommunityBoard,
   DashboardOverview,
   FeedItem,
   HotStrategy,
@@ -173,6 +174,7 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
   const [botBusy, setBotBusy] = useState<string | null>(null);
 
   const [quotes, setQuotes] = useState<MarketQuote[]>([]);
+  const [communityBoards, setCommunityBoards] = useState<CommunityBoard[]>([]);
   const [ranking, setRanking] = useState<StrategyRankingItem[]>([]);
   const [rankPeriod, setRankPeriod] = useState<"week" | "month" | "all">("week");
 
@@ -201,13 +203,14 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
   const containerClass = embedded ? "" : "max-w-7xl mx-auto px-4 py-4 sm:py-6";
 
   const refreshPublic = async () => {
-    const [q, t, l, hs, tt, nw] = await Promise.all([
+    const [q, t, l, hs, tt, nw, boards] = await Promise.all([
       api.getMarketQuotes().catch(() => ({ quotes: [] as MarketQuote[] })),
       api.getTrending().catch(() => [] as TrendingPost[]),
       api.getPosts({ sort: "latest", page: 1 }).catch(() => [] as PostListItem[]),
       api.getHotStrategies().catch(() => [] as HotStrategy[]),
       api.getTopTraders("week").catch(() => [] as TopTrader[]),
       api.getNews(12, true).catch(() => ({ items: [] as ExternalFeedItem[] })),
+      api.getCommunities().catch(() => [] as CommunityBoard[]),
     ]);
 
     setQuotes((q as any).quotes || []);
@@ -216,6 +219,7 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
     setHotStrategies(hs as HotStrategy[]);
     setTopTraders(tt as TopTrader[]);
     setNews((nw as any).items || []);
+    setCommunityBoards(boards as CommunityBoard[]);
 
     const profitFeed = (l as PostListItem[])
       .filter((p) => p.category === "profit" || p.verified_profit_pct != null)
@@ -332,6 +336,18 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
 
     return parts.length ? parts.join("   |   ") : "실시간 데이터를 불러오는 중...";
   }, [quotes, news, xFeed, xConfigured]);
+
+  const coinBoardSlugMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const board of communityBoards) {
+      const symbol =
+        (board.coin_symbol || board.coin_pair?.split("-").pop() || board.slug || "")
+          .toUpperCase()
+          .trim();
+      if (symbol) map.set(symbol, board.slug);
+    }
+    return map;
+  }, [communityBoards]);
 
   return (
     <div className="min-h-screen">
@@ -475,8 +491,15 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
             {quotes.length === 0 ? (
               <div className="col-span-full text-sm text-slate-500 dark:text-slate-400">{loading ? "시세 불러오는 중..." : "시세 데이터가 없습니다."}</div>
             ) : (
-              quotes.slice(0, 8).map((q) => (
-                <div key={q.market} className="rounded-xl bg-slate-50/80 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 px-3 py-2 min-w-0">
+              quotes.slice(0, 8).map((q) => {
+                const boardSlug = coinBoardSlugMap.get((q.symbol || "").toUpperCase());
+                const href = boardSlug ? `/community/boards/${boardSlug}` : "/community/boards";
+                return (
+                <Link
+                  key={q.market}
+                  href={href}
+                  className="rounded-xl bg-slate-50/80 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 px-3 py-2 min-w-0 block transition hover:border-blue-300/60 dark:hover:border-blue-500/40 hover:bg-blue-50/40 dark:hover:bg-blue-900/10"
+                >
                   <div className="flex items-center justify-between gap-1">
                     <span className="text-sm font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">{q.symbol}</span>
                     <span className={`text-xs font-black whitespace-nowrap ${pctClass(q.signed_change_rate_pct)}`}>
@@ -485,8 +508,8 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
                   </div>
                   <div className="mt-1 text-sm font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">{q.trade_price.toLocaleString()}<span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 ml-0.5">원</span></div>
                   <div className="mt-0.5 text-sm text-slate-400 dark:text-slate-500 whitespace-nowrap truncate"><span className="text-[10px]">vol </span>{Math.round(q.acc_trade_volume_24h).toLocaleString()}</div>
-                </div>
-              ))
+                </Link>
+              )})
             )}
           </div>
         </section>
