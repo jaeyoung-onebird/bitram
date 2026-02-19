@@ -37,25 +37,25 @@ async def register_key(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Verify key validity
+    # Verify key validity first, reject before saving
     client = UpbitClient(req.access_key, req.secret_key)
     is_valid = await client.verify_keys()
     await client.close()
+
+    if not is_valid:
+        raise HTTPException(400, "API 키가 유효하지 않습니다. 키를 확인해주세요.")
 
     key = ExchangeKey(
         user_id=user.id,
         access_key_enc=encrypt_key(req.access_key),
         secret_key_enc=encrypt_key(req.secret_key),
         label=req.label,
-        is_valid=is_valid,
-        last_verified_at=datetime.now(timezone.utc) if is_valid else None,
+        is_valid=True,
+        last_verified_at=datetime.now(timezone.utc),
     )
     db.add(key)
     await db.commit()
     await db.refresh(key)
-
-    if not is_valid:
-        raise HTTPException(400, "API 키가 유효하지 않습니다. 키를 확인해주세요.")
 
     return KeyResponse(
         id=str(key.id), exchange=key.exchange, label=key.label,
