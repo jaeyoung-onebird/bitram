@@ -222,8 +222,8 @@ async def login(
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh(req: RefreshRequest, request: Request, response: Response):
-    refresh_token = req.refresh_token or request.cookies.get("bitram_refresh_token")
+async def refresh(request: Request, response: Response, req: RefreshRequest = None):
+    refresh_token = (req.refresh_token if req else None) or request.cookies.get("bitram_refresh_token")
     if not refresh_token:
         raise HTTPException(401, "리프레시 토큰이 없습니다.")
 
