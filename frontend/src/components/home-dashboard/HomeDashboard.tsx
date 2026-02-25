@@ -517,79 +517,6 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
           </div>
         </section>
 
-        {/* Partner Recruitment Banner */}
-        <section className="mt-5 rounded-2xl overflow-hidden border border-amber-300/40 dark:border-amber-500/20 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 dark:from-amber-900/20 dark:via-orange-900/15 dark:to-amber-900/20 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5">
-            <div className="flex items-start gap-3">
-              <span className="text-2xl shrink-0 mt-0.5">🤝</span>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">운영 파트너 모집중</h3>
-                  <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-xs font-bold animate-pulse">모집중</span>
-                </div>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                  BITRAM 플랫폼을 함께 성장시킬 운영 파트너를 찾습니다. 코인 커뮤니티 운영, 마케팅, 콘텐츠 제작 경험이 있는 분을 환영합니다.
-                </p>
-              </div>
-            </div>
-            <a
-              href="mailto:jyy2co@gmail.com"
-              className="shrink-0 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold transition text-center shadow-sm"
-            >
-              문의하기
-            </a>
-          </div>
-        </section>
-
-        {/* Onboarding Checklist + Level Badge */}
-        {isAuthenticated && onboarding && !onboardingDismissed && (
-          <section className="mt-5 rounded-2xl border border-blue-200/60 dark:border-blue-500/20 bg-blue-50/50 dark:bg-slate-800/80 overflow-hidden shadow-sm p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="text-base font-bold text-blue-600 dark:text-blue-400">시작 가이드</div>
-                {myPoints && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500 text-white font-bold">
-                    Lv.{myPoints.level} {myPoints.level_name} · {myPoints.total_points}P
-                  </span>
-                )}
-              </div>
-              <button
-                onClick={() => setOnboardingDismissed(true)}
-                className="text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition"
-              >
-                닫기
-              </button>
-            </div>
-            <div className="w-full h-1.5 bg-blue-100 dark:bg-blue-900/40 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-blue-500 rounded-full transition-all"
-                style={{ width: `${onboarding.completed * 20}%` }}
-              />
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-              {[
-                { done: onboarding.steps.first_strategy, label: "첫 전략 만들기", href: "/strategies" },
-                { done: onboarding.steps.first_backtest, label: "백테스트 실행", href: "/strategies" },
-                { done: onboarding.steps.first_post, label: "첫 글 작성", href: "/community/new" },
-                { done: onboarding.steps.first_follow, label: "유저 팔로우", href: "/community" },
-                { done: onboarding.steps.api_key_added, label: "API 키 등록", href: "/settings" },
-              ].map((step) => (
-                <Link
-                  key={step.label}
-                  href={step.href}
-                  className={`p-2 rounded-lg text-center text-xs font-medium transition ${
-                    step.done
-                      ? "bg-blue-100 dark:bg-blue-500/20 text-blue-500 line-through"
-                      : "bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/15"
-                  }`}
-                >
-                  {step.done ? "✓ " : ""}{step.label}
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-
         {/* ── Community Hot Topics ─────────────────────────── */}
         {trending.length > 0 && (
           <section className="mt-5 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
@@ -660,6 +587,79 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
                       수익 {pctText(t.verified_profit_pct)}
                     </div>
                   )}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Partner Recruitment Banner */}
+        <section className="mt-5 rounded-2xl overflow-hidden border border-amber-300/40 dark:border-amber-500/20 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 dark:from-amber-900/20 dark:via-orange-900/15 dark:to-amber-900/20 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl shrink-0 mt-0.5">🤝</span>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">운영 파트너 모집중</h3>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-xs font-bold animate-pulse">모집중</span>
+                </div>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                  BITRAM 플랫폼을 함께 성장시킬 운영 파트너를 찾습니다. 코인 커뮤니티 운영, 마케팅, 콘텐츠 제작 경험이 있는 분을 환영합니다.
+                </p>
+              </div>
+            </div>
+            <a
+              href="mailto:jyy2co@gmail.com"
+              className="shrink-0 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold transition text-center shadow-sm"
+            >
+              문의하기
+            </a>
+          </div>
+        </section>
+
+        {/* Onboarding Checklist + Level Badge */}
+        {isAuthenticated && onboarding && !onboardingDismissed && (
+          <section className="mt-5 rounded-2xl border border-blue-200/60 dark:border-blue-500/20 bg-blue-50/50 dark:bg-slate-800/80 overflow-hidden shadow-sm p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="text-base font-bold text-blue-600 dark:text-blue-400">시작 가이드</div>
+                {myPoints && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500 text-white font-bold">
+                    Lv.{myPoints.level} {myPoints.level_name} · {myPoints.total_points}P
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => setOnboardingDismissed(true)}
+                className="text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition"
+              >
+                닫기
+              </button>
+            </div>
+            <div className="w-full h-1.5 bg-blue-100 dark:bg-blue-900/40 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-blue-500 rounded-full transition-all"
+                style={{ width: `${onboarding.completed * 20}%` }}
+              />
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {[
+                { done: onboarding.steps.first_strategy, label: "첫 전략 만들기", href: "/strategies" },
+                { done: onboarding.steps.first_backtest, label: "백테스트 실행", href: "/strategies" },
+                { done: onboarding.steps.first_post, label: "첫 글 작성", href: "/community/new" },
+                { done: onboarding.steps.first_follow, label: "유저 팔로우", href: "/community" },
+                { done: onboarding.steps.api_key_added, label: "API 키 등록", href: "/settings" },
+              ].map((step) => (
+                <Link
+                  key={step.label}
+                  href={step.href}
+                  className={`p-2 rounded-lg text-center text-xs font-medium transition ${
+                    step.done
+                      ? "bg-blue-100 dark:bg-blue-500/20 text-blue-500 line-through"
+                      : "bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/15"
+                  }`}
+                >
+                  {step.done ? "✓ " : ""}{step.label}
                 </Link>
               ))}
             </div>
