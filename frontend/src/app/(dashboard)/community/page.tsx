@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import type { PostListItem, TrendingPost, CommunityBoard } from "@/types";
@@ -40,8 +40,9 @@ function formatDate(dateStr: string): string {
   return date.toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
 }
 
-export default function CommunityPage() {
+function CommunityContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [posts, setPosts] = useState<PostListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState("latest");
@@ -52,7 +53,7 @@ export default function CommunityPage() {
   // Boards
   const [boards, setBoards] = useState<CommunityBoard[]>([]);
   const [boardsLoading, setBoardsLoading] = useState(true);
-  const [activeBoard, setActiveBoard] = useState<string>("all"); // "all" or slug
+  const [activeBoard, setActiveBoard] = useState<string>(searchParams.get("board") || "all");
 
   useEffect(() => {
     api
@@ -427,5 +428,13 @@ export default function CommunityPage() {
         </aside>
       </div>
     </div>
+  );
+}
+
+export default function CommunityPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-48"><div className="text-slate-500 dark:text-slate-400">로딩 중...</div></div>}>
+      <CommunityContent />
+    </Suspense>
   );
 }

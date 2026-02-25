@@ -88,7 +88,7 @@ export default function BoardsPage() {
           {filtered.map((community) => (
             <Link
               key={community.id}
-              href={`/community/boards/${community.slug}`}
+              href={`/community?board=${community.slug}`}
               className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-700/60 rounded-xl shadow-sm hover:border-blue-300 dark:hover:border-blue-500/50 hover:shadow-md transition group p-3 sm:p-4 flex flex-col"
             >
               {/* Icon / Name */}

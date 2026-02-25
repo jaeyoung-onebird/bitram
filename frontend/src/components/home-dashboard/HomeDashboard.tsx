@@ -496,7 +496,7 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
             ) : (
               quotes.slice(0, 8).map((q) => {
                 const boardSlug = coinBoardSlugMap.get((q.symbol || "").toUpperCase());
-                const href = boardSlug ? `/community/boards/${boardSlug}` : "/community/boards";
+                const href = boardSlug ? `/community?board=${boardSlug}` : "/community";
                 return (
                 <Link
                   key={q.market}
