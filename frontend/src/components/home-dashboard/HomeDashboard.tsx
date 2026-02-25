@@ -501,20 +501,22 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
               quotes.slice(0, 8).map((q) => {
                 const boardSlug = coinBoardSlugMap.get((q.symbol || "").toUpperCase());
                 const href = boardSlug ? `/community?board=${boardSlug}` : "/community";
+                const isUp = q.signed_change_rate_pct >= 0;
                 return (
                 <Link
                   key={q.market}
                   href={href}
-                  className="rounded-xl bg-slate-50/80 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 px-3 py-2 min-w-0 block transition hover:border-blue-300/60 dark:hover:border-blue-500/40 hover:bg-blue-50/40 dark:hover:bg-blue-900/10"
+                  className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-700/60 px-3 py-2.5 min-w-0 block transition hover:border-blue-400/50 dark:hover:border-blue-500/40 hover:shadow-md group"
                 >
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="text-sm font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">{q.symbol}</span>
-                    <span className={`text-xs font-black whitespace-nowrap ${pctClass(q.signed_change_rate_pct)}`}>
+                  <div className="flex items-center justify-between gap-1 mb-1.5">
+                    <span className="text-sm font-black text-slate-800 dark:text-slate-100 whitespace-nowrap">{q.symbol}</span>
+                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md whitespace-nowrap ${isUp ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-red-500/10 text-red-500 dark:text-red-400"}`}>
                       {pctText(q.signed_change_rate_pct)}
                     </span>
                   </div>
-                  <div className="mt-1 text-sm font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">{q.trade_price.toLocaleString()}<span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 ml-0.5">원</span></div>
-                  <div className="mt-0.5 text-sm text-slate-400 dark:text-slate-500 whitespace-nowrap truncate"><span className="text-[10px]">vol </span>{Math.round(q.acc_trade_volume_24h).toLocaleString()}</div>
+                  <div className={`text-sm font-black whitespace-nowrap ${isUp ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}`}>
+                    {q.trade_price.toLocaleString()}<span className="text-[10px] font-normal text-slate-400 dark:text-slate-500 ml-0.5">원</span>
+                  </div>
                 </Link>
               )})
             )}
@@ -522,114 +524,69 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
         </section>
 
         {/* ── Community Hot Topics ─────────────────────────── */}
-        <section className="mt-5 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
-            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Flame className="h-4 w-4 text-orange-500" />
-                <div className="text-base font-bold dark:text-slate-100">커뮤니티 인기글</div>
-                <span className="text-xs text-orange-600 bg-orange-400/10 px-2 py-0.5 rounded-full font-bold">TOP 5</span>
-              </div>
-              <Link href="/community" className="text-xs text-blue-500 hover:underline">더보기</Link>
+        <section className="mt-8 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
+          <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-5 bg-orange-500 rounded-full" />
+              <Flame className="h-4 w-4 text-orange-500" />
+              <span className="text-[15px] font-bold text-slate-800 dark:text-slate-100">커뮤니티 인기글</span>
+              <span className="text-[10px] text-orange-600 bg-orange-400/10 px-2 py-0.5 rounded-full font-black tracking-wide">TOP 5</span>
             </div>
+            <Link href="/community" className="text-xs text-slate-400 dark:text-slate-500 hover:text-blue-500 transition">더보기 →</Link>
+          </div>
 
-            {loading ? (
-              <div className="p-6 text-center text-sm text-slate-400 dark:text-slate-500">불러오는 중...</div>
-            ) : trending.length === 0 ? (
-              <div className="p-6 text-center text-sm text-slate-400 dark:text-slate-500">
-                아직 인기글이 없습니다. 첫 번째 글을 작성해보세요!
-              </div>
-            ) : (
-            <div className="p-3 grid sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+          {loading ? (
+            <div className="p-6 text-center text-sm text-slate-400 dark:text-slate-500">불러오는 중...</div>
+          ) : trending.length === 0 ? (
+            <div className="p-6 text-center text-sm text-slate-400 dark:text-slate-500">
+              아직 인기글이 없습니다. 첫 번째 글을 작성해보세요!
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {trending.slice(0, 5).map((t, idx) => (
                 <Link
                   key={t.id}
                   href={`/community/${t.id}`}
-                  className="group block p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 hover:border-blue-400/40 dark:hover:border-blue-500/30 hover:shadow-sm transition"
+                  className="flex items-center gap-4 px-5 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition group"
                 >
-                  {/* Rank + Category */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className={`w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center shrink-0 ${
-                      idx === 0 ? "bg-yellow-500/20 text-yellow-600"
-                        : idx === 1 ? "bg-gray-400/20 text-slate-700 dark:text-slate-200"
-                        : idx === 2 ? "bg-orange-500/20 text-orange-600"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
-                    }`}>
-                      {idx + 1}
-                    </span>
-                    <CategoryPill category={t.category as any} />
-                    {t.has_strategy && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 shrink-0">전략</span>
-                    )}
-                  </div>
+                  <span className={`w-6 h-6 rounded-full text-xs font-black flex items-center justify-center shrink-0 ${
+                    idx === 0 ? "bg-yellow-500/20 text-yellow-600 dark:text-yellow-500"
+                      : idx === 1 ? "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                      : idx === 2 ? "bg-orange-500/15 text-orange-600"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                  }`}>{idx + 1}</span>
 
-                  {/* Title */}
-                  <div className="text-sm font-bold text-slate-700 dark:text-slate-200 line-clamp-2 group-hover:text-blue-500 transition min-h-[2.5rem]">
-                    {t.title}
-                  </div>
-
-                  {/* Author */}
-                  <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 truncate">
-                    {t.author.level != null && (
-                      <span className="text-[10px] font-black text-blue-500">Lv.{t.author.level}</span>
-                    )}
-                    <span className="truncate">{t.author.nickname}</span>
-                  </div>
-
-                  {/* Engagement stats */}
-                  <div className="mt-2 flex items-center gap-2.5 text-xs text-slate-400 dark:text-slate-500">
-                    <span className="inline-flex items-center gap-0.5">
-                      <Heart className="h-3 w-3" />
-                      {t.like_count}
-                    </span>
-                    <span className="inline-flex items-center gap-0.5">
-                      <MessageCircle className="h-3 w-3" />
-                      {t.comment_count}
-                    </span>
-                    <span className="inline-flex items-center gap-0.5">
-                      <Eye className="h-3 w-3" />
-                      {t.view_count}
-                    </span>
-                  </div>
-
-                  {/* Verified profit */}
-                  {t.verified_profit_pct != null && (
-                    <div className={`mt-1.5 text-xs font-black ${pctClass(t.verified_profit_pct)}`}>
-                      수익 {pctText(t.verified_profit_pct)}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <CategoryPill category={t.category as any} />
+                      {t.has_strategy && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500">전략</span>}
                     </div>
-                  )}
+                    <div className="text-sm font-semibold text-slate-800 dark:text-slate-100 group-hover:text-blue-500 transition truncate">
+                      {t.title}
+                    </div>
+                    <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
+                      {t.author.level != null && <span className="text-[10px] font-black text-blue-500">Lv.{t.author.level}</span>}
+                      <span>{t.author.nickname}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 text-xs text-slate-400 dark:text-slate-500 shrink-0">
+                    <span className="inline-flex items-center gap-0.5"><Heart className="h-3 w-3" />{t.like_count}</span>
+                    <span className="inline-flex items-center gap-0.5"><MessageCircle className="h-3 w-3" />{t.comment_count}</span>
+                    <span className="inline-flex items-center gap-0.5"><Eye className="h-3 w-3" />{t.view_count}</span>
+                    {t.verified_profit_pct != null && (
+                      <span className={`font-black ${pctClass(t.verified_profit_pct)}`}>{pctText(t.verified_profit_pct)}</span>
+                    )}
+                  </div>
                 </Link>
               ))}
             </div>
-            )}
-          </section>
-
-        {/* Partner Recruitment Banner */}
-        <section className="mt-5 rounded-2xl overflow-hidden border border-amber-300/40 dark:border-amber-500/20 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 dark:from-amber-900/20 dark:via-orange-900/15 dark:to-amber-900/20 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5">
-            <div className="flex items-start gap-3">
-              <span className="text-2xl shrink-0 mt-0.5">🤝</span>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">운영 파트너 모집중</h3>
-                  <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-xs font-bold animate-pulse">모집중</span>
-                </div>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                  BITRAM 플랫폼을 함께 성장시킬 운영 파트너를 찾습니다. 코인 커뮤니티 운영, 마케팅, 콘텐츠 제작 경험이 있는 분을 환영합니다.
-                </p>
-              </div>
-            </div>
-            <a
-              href="mailto:jyy2co@gmail.com"
-              className="shrink-0 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold transition text-center shadow-sm"
-            >
-              문의하기
-            </a>
-          </div>
+          )}
         </section>
 
         {/* Onboarding Checklist + Level Badge */}
         {isAuthenticated && onboarding && !onboardingDismissed && (
-          <section className="mt-5 rounded-2xl border border-blue-200/60 dark:border-blue-500/20 bg-blue-50/50 dark:bg-slate-800/80 overflow-hidden shadow-sm p-4 space-y-3">
+          <section className="mt-8 rounded-2xl border border-blue-200/60 dark:border-blue-500/20 bg-blue-50/50 dark:bg-slate-800/80 overflow-hidden shadow-sm p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="text-base font-bold text-blue-600 dark:text-blue-400">시작 가이드</div>
@@ -677,21 +634,22 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
         )}
 
         {/* News + X (translated) */}
-        <section className="mt-5 grid lg:grid-cols-12 gap-5">
+        <section className="mt-8 grid lg:grid-cols-12 gap-6">
           <section className="lg:col-span-6 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
-            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <div className="text-base font-bold dark:text-slate-100">코인 뉴스</div>
+            <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-1 h-5 bg-violet-500 rounded-full" />
+                <span className="text-[15px] font-bold text-slate-800 dark:text-slate-100">코인 뉴스</span>
                 <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-yellow-400/15 text-yellow-600 dark:text-yellow-400 tracking-wider">⚡FAST</span>
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-violet-500/10 text-violet-500 dark:text-violet-400">AI번역</span>
               </div>
-              <Link href="/news" className="text-xs text-blue-500 hover:text-blue-500 hover:underline">
-                전체보기
+              <Link href="/news" className="text-xs text-slate-400 dark:text-slate-500 hover:text-blue-500 transition">
+                전체보기 →
               </Link>
             </div>
-            <div className="p-3 space-y-2">
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {news.length === 0 ? (
-                <div className="text-sm text-slate-500 dark:text-slate-400">{loading ? "불러오는 중..." : "뉴스 데이터가 없습니다."}</div>
+                <div className="p-5 text-sm text-slate-400 dark:text-slate-500">{loading ? "불러오는 중..." : "뉴스 데이터가 없습니다."}</div>
               ) : (
                 news.slice(0, 5).map((n, i) => (
                   <a
@@ -699,13 +657,15 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
                     href={n.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="block p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm transition"
+                    className="flex items-start gap-3 px-5 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition group"
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-sm text-slate-500 dark:text-slate-400 truncate">{n.source}</div>
-                      <div className="text-sm text-slate-500 dark:text-slate-400">{timeAgo(n.published_ts ?? n.published_at)}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 shrink-0">{n.source}</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">{timeAgo(n.published_ts ?? n.published_at)}</span>
+                      </div>
+                      <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 group-hover:text-blue-500 transition line-clamp-1">{n.title_ko || n.title}</div>
                     </div>
-                    <div className="mt-1 text-sm font-bold text-slate-700 dark:text-slate-200 line-clamp-1">{n.title_ko || n.title}</div>
                   </a>
                 ))
               )}
@@ -713,9 +673,10 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
           </section>
 
           <section className="lg:col-span-6 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
-            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <div className="text-base font-bold dark:text-slate-100">X 피드</div>
+            <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-1 h-5 bg-slate-800 dark:bg-slate-200 rounded-full" />
+                <span className="text-[15px] font-bold text-slate-800 dark:text-slate-100">X 피드</span>
                 <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-yellow-400/15 text-yellow-600 dark:text-yellow-400 tracking-wider">⚡FAST</span>
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-violet-500/10 text-violet-500 dark:text-violet-400">AI번역</span>
               </div>
@@ -766,11 +727,11 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
                     rel="noreferrer"
                     className="block p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm transition"
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-sm text-slate-500 dark:text-slate-400 truncate">{x.source}</div>
-                      <div className="text-sm text-slate-500 dark:text-slate-400">{timeAgo(x.published_ts ?? x.published_at)}</div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 shrink-0">{x.source}</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">{timeAgo(x.published_ts ?? x.published_at)}</span>
                     </div>
-                    <div className="mt-1 text-sm font-bold text-slate-700 dark:text-slate-200 line-clamp-1">{x.title_ko || x.title}</div>
+                    <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 group-hover:text-blue-500 transition line-clamp-1">{x.title_ko || x.title}</div>
                   </a>
                 ))
               )}
@@ -778,13 +739,38 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
           </section>
         </section>
 
+        {/* Partner Recruitment Banner */}
+        <section className="mt-8 rounded-2xl overflow-hidden border border-dashed border-amber-300/60 dark:border-amber-500/30 bg-gradient-to-r from-amber-50/80 via-orange-50/60 to-amber-50/80 dark:from-amber-900/10 dark:via-orange-900/10 dark:to-amber-900/10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <span className="text-xl shrink-0">🤝</span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-slate-800 dark:text-slate-100">운영 파트너 모집중</span>
+                  <span className="px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-black animate-pulse">OPEN</span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">코인 커뮤니티 운영 · 마케팅 · 콘텐츠 경험자 환영</p>
+              </div>
+            </div>
+            <a
+              href="mailto:jyy2co@gmail.com"
+              className="shrink-0 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition text-center"
+            >
+              문의하기
+            </a>
+          </div>
+        </section>
+
         {/* Main: 3 columns */}
-        <section className="mt-5 grid lg:grid-cols-12 gap-5">
+        <section className="mt-8 grid lg:grid-cols-12 gap-5">
           {/* Left: Strategy ranking */}
           <section className="order-2 lg:order-1 lg:col-span-3 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
-            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between">
-                <div className="text-base font-bold dark:text-slate-100">수익률 랭킹</div>
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-5 bg-emerald-500 rounded-full" />
+                  <span className="text-[15px] font-bold text-slate-800 dark:text-slate-100">수익률 랭킹</span>
+                </div>
                 <div className="flex gap-1">
                   {(["week", "month", "all"] as const).map((p) => (
                     <button
@@ -851,18 +837,18 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
 
           {/* Center: Profit feed + Following */}
           <section className="order-1 lg:order-2 lg:col-span-6 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
-            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-3">
+            <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-4">
                 <button
                   onClick={() => setFeedTab("profit")}
-                  className={`text-base font-bold transition ${feedTab === "profit" ? "text-slate-800 dark:text-slate-100" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
+                  className={`text-[15px] font-bold transition relative pb-0.5 ${feedTab === "profit" ? "text-slate-800 dark:text-slate-100 after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-blue-500 after:rounded-full" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
                 >
                   인증 피드
                 </button>
                 {isAuthenticated && (
                   <button
                     onClick={() => setFeedTab("following")}
-                    className={`text-base font-bold transition ${feedTab === "following" ? "text-slate-800 dark:text-slate-100" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
+                    className={`text-[15px] font-bold transition relative pb-0.5 ${feedTab === "following" ? "text-slate-800 dark:text-slate-100 after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-blue-500 after:rounded-full" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
                   >
                     팔로잉
                   </button>
