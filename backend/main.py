@@ -72,6 +72,24 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to seed strategies: {e}")
 
+    # Resume bots that were running before restart
+    try:
+        from db.database import AsyncSessionLocal
+        from db.models import Bot
+        from sqlalchemy import select
+        from core.bot_manager import start_bot
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(select(Bot).where(Bot.status == "running"))
+            running_bots = result.scalars().all()
+            for bot in running_bots:
+                try:
+                    await start_bot(bot.id, db)
+                    logger.info(f"Resumed bot {bot.id} ({bot.name})")
+                except Exception as e:
+                    logger.error(f"Failed to resume bot {bot.id}: {e}")
+    except Exception as e:
+        logger.error(f"Failed to resume bots on startup: {e}")
+
     # Start Telegram bot polling (disabled temporarily to avoid restart conflicts)
     if False and settings.TELEGRAM_BOT_TOKEN:
         try:
