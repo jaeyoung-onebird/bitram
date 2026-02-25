@@ -6,6 +6,10 @@ on:
     branches: [main]
     types: [completed]
 
+concurrency:
+  group: production-deploy
+  cancel-in-progress: true
+
 jobs:
   deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
@@ -44,24 +48,24 @@ jobs:
 
       - name: Deploy frontend (standalone)
         run: |
-          rsync -avz --delete \
+          rsync -az --checksum --delete \
             -e "ssh -i ~/.ssh/id_rsa" \
             frontend/.next/standalone/ \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/onebird/frontend/.next/standalone/
 
-          rsync -avz --delete \
+          rsync -az --checksum --delete \
             -e "ssh -i ~/.ssh/id_rsa" \
             frontend/.next/static/ \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/onebird/frontend/.next/standalone/.next/static/
 
-          rsync -avz --delete \
+          rsync -az --checksum --delete \
             -e "ssh -i ~/.ssh/id_rsa" \
             frontend/.next/static/ \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/bitram-next-static/
 
       - name: Deploy backend
         run: |
-          rsync -avz --delete \
+          rsync -az --checksum --delete \
             --exclude='venv' \
             --exclude='__pycache__' \
             --exclude='.env' \
