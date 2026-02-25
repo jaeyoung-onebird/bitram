@@ -42,6 +42,7 @@ class ApiClient {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({}),
       });
       if (!res.ok) return null;
 

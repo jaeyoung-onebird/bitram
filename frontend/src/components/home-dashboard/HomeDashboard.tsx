@@ -366,7 +366,7 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
               </span>
             </div>
             {isAuthenticated ? (
-              <nav className="hidden md:flex items-center gap-0.5">
+              <nav className="hidden md:flex items-center gap-1.5">
                 {navItems.map((item) => {
                   const Icon: LucideIcon = item.icon;
                   const active = pathname.startsWith(item.href);
@@ -374,12 +374,13 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium transition ${
-                        active ? "bg-blue-50 dark:bg-blue-500/15 text-blue-500" : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-base font-medium transition ${
+                        active ? "bg-blue-50 dark:bg-blue-500/15 text-blue-500" : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
                       }`}
                     >
-                      <Icon className="h-4 w-4" />
+                      <Icon className="h-4 w-4" aria-hidden="true" />
                       <span className="hidden lg:inline">{item.label}</span>
+                      <span className="lg:hidden sr-only">{item.label}</span>
                     </Link>
                   );
                 })}
@@ -1237,8 +1238,8 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
                     href={item.href}
                     className={`group relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl px-1 py-2 transition-all duration-200 ${
                       active
-                        ? "bg-blue-50 text-blue-500 shadow-[inset_0_0_0_1px_rgba(49,130,246,0.2)]"
-                        : "text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200"
+                        ? "bg-blue-50 dark:bg-blue-500/15 text-blue-500 shadow-[inset_0_0_0_1px_rgba(49,130,246,0.2)]"
+                        : "text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-300"
                     }`}
                   >
                     <Icon className={`h-4 w-4 ${active ? "drop-shadow-[0_0_8px_rgba(49,130,246,0.5)]" : ""}`} />
