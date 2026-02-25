@@ -30,6 +30,8 @@ class User(Base):
     plan_expires_at = Column(DateTime(timezone=True), nullable=True)
     referral_code = Column(String(12), unique=True, nullable=True, index=True)
     telegram_chat_id = Column(String(50), nullable=True)
+    oauth_provider = Column(String(20), nullable=True)   # google, kakao
+    oauth_id = Column(String(100), nullable=True, index=True)
     email_verified = Column(Boolean, default=False)
     email_verify_token = Column(String(128), nullable=True, index=True)
     email_verify_expires = Column(DateTime(timezone=True), nullable=True)

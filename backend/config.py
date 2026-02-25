@@ -69,7 +69,14 @@ class Settings(BaseSettings):
     # Sentry
     SENTRY_DSN: str = ""
 
+    # OAuth
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    KAKAO_CLIENT_ID: str = ""
+    KAKAO_CLIENT_SECRET: str = ""
+
     # App
+    BACKEND_URL: str = "http://localhost:8000"
     FRONTEND_URL: str = "http://localhost:3000"
     CORS_ORIGINS: str = "http://localhost:3000"
     APP_ENV: str = "development"

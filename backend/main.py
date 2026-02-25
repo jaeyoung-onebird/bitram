@@ -12,6 +12,7 @@ from db.database import engine
 
 # Import all routers
 from api.auth import router as auth_router
+from api.oauth import router as oauth_router
 from api.keys import router as keys_router
 from api.strategies import router as strategies_router
 from api.backtest import router as backtest_router
@@ -169,6 +170,7 @@ async def add_security_headers(request: Request, call_next):
 
 # Register routers
 app.include_router(auth_router)
+app.include_router(oauth_router)
 app.include_router(keys_router)
 app.include_router(strategies_router)
 app.include_router(backtest_router)
