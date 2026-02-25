@@ -308,29 +308,37 @@ async def list_posts(
 async def trending_posts(
     db: AsyncSession = Depends(get_db),
 ):
-    """Returns trending posts: high engagement in the last 7 days. Cached for 5 minutes."""
+    """Returns trending posts: high engagement in the last 30 days. Falls back to all-time if empty. Cached for 5 minutes."""
     # Check cache first
     cached = await cache_get("posts:trending")
     if cached:
         return _json.loads(cached)
-
-    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
 
     # Engagement score: like_count * 2 + comment_count * 3 + view_count
     engagement_score = (
         Post.like_count * 2 + Post.comment_count * 3 + Post.view_count
     ).label("engagement_score")
 
-    stmt = (
-        select(Post, User.nickname, User.plan, engagement_score, UserPoints.total_points)
-        .join(User, Post.user_id == User.id)
-        .outerjoin(UserPoints, UserPoints.user_id == Post.user_id)
-        .where(Post.created_at >= seven_days_ago)
-        .order_by(engagement_score.desc())
-        .limit(10)
-    )
-    result = await db.execute(stmt)
+    def make_stmt(since=None):
+        q = (
+            select(Post, User.nickname, User.plan, engagement_score, UserPoints.total_points)
+            .join(User, Post.user_id == User.id)
+            .outerjoin(UserPoints, UserPoints.user_id == Post.user_id)
+            .order_by(engagement_score.desc())
+            .limit(10)
+        )
+        if since:
+            q = q.where(Post.created_at >= since)
+        return q
+
+    # Try 30 days first, fall back to all-time
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    result = await db.execute(make_stmt(since=thirty_days_ago))
     rows = result.all()
+
+    if not rows:
+        result = await db.execute(make_stmt())
+        rows = result.all()
 
     items = [
         TrendingPostItem(
