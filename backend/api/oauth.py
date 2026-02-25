@@ -181,10 +181,10 @@ async def _process_oauth_login(
     response = RedirectResponse(url=f"{settings.FRONTEND_URL}/dashboard")
     response.set_cookie(
         "bitram_access_token", access_token,
-        httponly=True, secure=is_prod, samesite="lax", max_age=86400,
+        httponly=True, secure=is_prod, samesite="lax", max_age=86400, path="/",
     )
     response.set_cookie(
         "bitram_refresh_token", refresh_token,
-        httponly=True, secure=is_prod, samesite="lax", max_age=604800,
+        httponly=True, secure=is_prod, samesite="lax", max_age=604800, path="/",
     )
     return response
