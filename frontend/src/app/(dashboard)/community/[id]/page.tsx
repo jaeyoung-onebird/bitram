@@ -330,9 +330,7 @@ export default function PostDetailPage() {
   const [loading, setLoading] = useState(true);
   const [commentContent, setCommentContent] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
-  const [liked, setLiked] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
-  const [likeCount, setLikeCount] = useState(0);
   const [copying, setCopying] = useState(false);
   const [reactions, setReactions] = useState<ReactionCount[]>([]);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -345,9 +343,7 @@ export default function PostDetailPage() {
       const result = await api.getPost(postId);
       if (guard && !guard.current) return;
       setPost(result);
-      setLiked(result.is_liked);
       setBookmarked(result.is_bookmarked);
-      setLikeCount(result.like_count);
     } catch (err) {
       console.error("Failed to fetch post:", err);
     }
@@ -381,16 +377,6 @@ export default function PostDetailPage() {
     });
     return () => { guard.current = false; };
   }, [fetchPost, fetchComments, fetchReactions]);
-
-  const handleToggleLike = async () => {
-    try {
-      const result = await api.toggleLike(postId);
-      setLiked(result.liked);
-      setLikeCount((prev) => (result.liked ? prev + 1 : prev - 1));
-    } catch (err) {
-      console.error("Failed to toggle like:", err);
-    }
-  };
 
   const handleToggleBookmark = async () => {
     try {
@@ -635,57 +621,49 @@ export default function PostDetailPage() {
         )}
 
         {/* Action buttons */}
-        <div className="flex items-center gap-3 sm:gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
-          <button
-            onClick={handleToggleLike}
-            className={`flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm transition ${
-              liked ? "text-red-400" : "text-slate-500 dark:text-slate-400 hover:text-red-400"
-            }`}
-          >
-            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill={liked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-            </svg>
-            <span className="hidden sm:inline">좋아요</span> {likeCount}
-          </button>
-          <button
-            onClick={handleToggleBookmark}
-            className={`flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm transition ${
-              bookmarked ? "text-yellow-400" : "text-slate-500 dark:text-slate-400 hover:text-yellow-400"
-            }`}
-          >
-            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill={bookmarked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-            </svg>
-            <span className="hidden sm:inline">북마크</span>
-          </button>
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 hidden sm:inline">공유</span>
-            <ShareButtons
-              title={post.title}
-              url={typeof window !== "undefined" ? window.location.href : ""}
-              description={post.content.slice(0, 100)}
+        <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            {/* 좋아요 / 싫어요 */}
+            <ReactionPicker
+              targetType="post"
+              targetId={postId}
+              reactions={reactions}
+              onReact={handleToggleReaction}
             />
           </div>
-          {user?.id !== post.author.id && (
-            <button onClick={() => setShowReportModal(true)} className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400 hover:text-red-400 transition ml-auto">
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-              <span className="hidden sm:inline">신고</span>
-            </button>
-          )}
-        </div>
 
-        {/* Reactions */}
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-          <ReactionPicker
-            targetType="post"
-            targetId={postId}
-            reactions={reactions}
-            onReact={handleToggleReaction}
-          />
+          <div className="flex items-center gap-3">
+            {/* 북마크 */}
+            <button
+              onClick={handleToggleBookmark}
+              className={`flex items-center gap-1.5 text-sm transition ${
+                bookmarked ? "text-yellow-500" : "text-slate-400 dark:text-slate-500 hover:text-yellow-500"
+              }`}
+            >
+              <svg className="w-4 h-4" fill={bookmarked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+              </svg>
+              <span className="text-xs hidden sm:inline">북마크</span>
+            </button>
+
+            {/* 공유 */}
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-slate-400 dark:text-slate-500 hidden sm:inline mr-0.5">공유</span>
+              <ShareButtons
+                title={post.title}
+                url={typeof window !== "undefined" ? window.location.href : ""}
+                description={post.content.slice(0, 100)}
+              />
+            </div>
+
+            {/* 신고 */}
+            {user?.id !== post.author.id && (
+              <button onClick={() => setShowReportModal(true)} className="text-xs text-slate-400 dark:text-slate-500 hover:text-red-400 transition">
+                신고
+              </button>
+            )}
+          </div>
         </div>
       </article>
 
