@@ -10,6 +10,7 @@ from fastapi import APIRouter, Query
 from config import get_settings
 from core.ai_translate import translate_text
 from core.feed_reader import fetch_feed, FeedEntry
+from core.redis_cache import cache_get, cache_set
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,11 @@ async def get_news(
     limit: Annotated[int, Query(ge=1, le=50)] = 15,
     translate: Annotated[int, Query(ge=0, le=1)] = 1,
 ):
+    cache_key = f"feeds:news:{limit}:{translate}"
+    cached = await cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     # Default sources if not configured (real RSS, no fake data).
     urls = _split_urls(settings.NEWS_FEED_URLS) or [
         "https://cointelegraph.com/rss",
@@ -100,7 +106,9 @@ async def get_news(
                 "published_ts": it.published_ts,
             }
         )
-    return {"items": out}
+    result = {"items": out}
+    await cache_set(cache_key, result, ttl=300)  # 5분 캐시
+    return result
 
 
 # ─── X Feed ─────────────────────────────────────────────────────────────
@@ -117,6 +125,11 @@ async def get_x_feed(
     2) RSS URL 폴백 (X_FEED_URLS 설정 시)
     3) 둘 다 없으면 추천 계정 리스트 반환
     """
+    cache_key = f"feeds:x:{limit}:{translate}"
+    cached = await cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     settings = get_settings()
     auth_token = settings.TWITTER_AUTH_TOKEN.strip()
     usernames_raw = settings.X_FEED_USERNAMES.strip()
@@ -148,7 +161,9 @@ async def get_x_feed(
                         "published_at": tw.created_at,
                         "published_ts": tw.published_ts,
                     })
-                return {"items": out, "configured": True}
+                result = {"items": out, "configured": True}
+                await cache_set(cache_key, result, ttl=120)  # 2분 캐시
+                return result
             else:
                 logger.warning("Twitter scraper returned no tweets, falling back to RSS")
         except Exception as e:
@@ -173,7 +188,9 @@ async def get_x_feed(
                 "published_at": it.published_at,
                 "published_ts": it.published_ts,
             })
-        return {"items": out, "configured": True}
+        result = {"items": out, "configured": True}
+        await cache_set(cache_key, result, ttl=120)  # 2분 캐시
+        return result
 
     # ── 3. 추천 계정 리스트 (피드 없음) ──
     accounts = [

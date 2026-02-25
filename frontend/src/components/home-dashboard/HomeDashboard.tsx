@@ -204,29 +204,48 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
 
   const containerClass = embedded ? "" : "max-w-7xl mx-auto px-4 py-4 sm:py-6";
 
+  // sessionStorage 캐시 헬퍼 (즉시 표시용)
+  const ssGet = (key: string) => { try { const v = sessionStorage.getItem(key); return v ? JSON.parse(v) : null; } catch { return null; } };
+  const ssSet = (key: string, val: unknown) => { try { sessionStorage.setItem(key, JSON.stringify(val)); } catch {} };
+
   const refreshPublic = async () => {
-    const [q, t, l, hs, tt, nw, boards] = await Promise.all([
+    // 핵심 데이터만 블로킹 (빠름): 시세 + 트렌딩 + 최신글 + 핫전략 + 탑트레이더
+    const [q, t, l, hs, tt] = await Promise.all([
       api.getMarketQuotes().catch(() => ({ quotes: [] as MarketQuote[] })),
       api.getTrending().catch(() => [] as TrendingPost[]),
       api.getPosts({ sort: "latest", page: 1 }).catch(() => [] as PostListItem[]),
       api.getHotStrategies().catch(() => [] as HotStrategy[]),
       api.getTopTraders("week").catch(() => [] as TopTrader[]),
-      api.getNews(12, true).catch(() => ({ items: [] as ExternalFeedItem[] })),
-      api.getCommunities().catch(() => [] as CommunityBoard[]),
     ]);
 
-    setQuotes((q as any).quotes || []);
-    setTrending(t as TrendingPost[]);
-    setLatest(l as PostListItem[]);
+    const quotes = (q as any).quotes || [];
+    const trending = t as TrendingPost[];
+    const latest = l as PostListItem[];
+    setQuotes(quotes);
+    setTrending(trending);
+    setLatest(latest);
     setHotStrategies(hs as HotStrategy[]);
     setTopTraders(tt as TopTrader[]);
-    setNews((nw as any).items || []);
-    setCommunityBoards(boards as CommunityBoard[]);
 
-    const profitFeed = (l as PostListItem[])
+    const profitFeed = latest
       .filter((p) => p.category === "profit" || p.verified_profit_pct != null)
       .slice(0, 18);
     setFeedPosts(profitFeed);
+
+    ssSet("dash:quotes", quotes);
+    ssSet("dash:trending", trending);
+  };
+
+  const refreshNews = async () => {
+    // 뉴스/게시판은 느릴 수 있으므로 별도 비동기 (non-blocking)
+    const [nw, boards] = await Promise.all([
+      api.getNews(12, true).catch(() => ({ items: [] as ExternalFeedItem[] })),
+      api.getCommunities().catch(() => [] as CommunityBoard[]),
+    ]);
+    const newsItems = (nw as any).items || [];
+    setNews(newsItems);
+    setCommunityBoards(boards as CommunityBoard[]);
+    ssSet("dash:news", newsItems);
   };
 
   const refreshXFeed = async () => {
@@ -273,6 +292,14 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
   };
 
   useEffect(() => {
+    // sessionStorage 캐시로 즉시 표시
+    const cachedQuotes = ssGet("dash:quotes");
+    const cachedTrending = ssGet("dash:trending");
+    const cachedNews = ssGet("dash:news");
+    if (cachedQuotes) setQuotes(cachedQuotes);
+    if (cachedTrending) setTrending(cachedTrending);
+    if (cachedNews) setNews(cachedNews);
+
     let cancelled = false;
     setLoading(true);
     refreshPublic()
@@ -280,7 +307,8 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    // X feed can be slow due external RSS/translation. Load it separately.
+    // 뉴스/X피드는 느리므로 완전 비동기 (UI 블로킹 없음)
+    refreshNews().catch(() => {});
     refreshXFeed().catch(() => {});
     return () => {
       cancelled = true;
