@@ -670,7 +670,11 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
         <section className="mt-5 grid lg:grid-cols-12 gap-5">
           <section className="lg:col-span-6 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
             <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <div className="text-base font-bold dark:text-slate-100">코인 뉴스 <span className="text-xs font-medium text-slate-400 dark:text-slate-500">(AI번역)</span></div>
+              <div className="flex items-center gap-1.5">
+                <div className="text-base font-bold dark:text-slate-100">코인 뉴스</div>
+                <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-yellow-400/15 text-yellow-600 dark:text-yellow-400 tracking-wider">⚡FAST</span>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-violet-500/10 text-violet-500 dark:text-violet-400">AI번역</span>
+              </div>
               <Link href="/news" className="text-xs text-blue-500 hover:text-blue-500 hover:underline">
                 전체보기
               </Link>
@@ -700,7 +704,11 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
 
           <section className="lg:col-span-6 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
             <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <div className="text-base font-bold dark:text-slate-100">X 피드 <span className="text-xs font-medium text-slate-400 dark:text-slate-500">(AI번역)</span></div>
+              <div className="flex items-center gap-1.5">
+                <div className="text-base font-bold dark:text-slate-100">X 피드</div>
+                <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-yellow-400/15 text-yellow-600 dark:text-yellow-400 tracking-wider">⚡FAST</span>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-violet-500/10 text-violet-500 dark:text-violet-400">AI번역</span>
+              </div>
               <div className="flex items-center gap-2">
                 <Link href="/x" className="text-xs text-blue-500 hover:text-blue-500 hover:underline">
                   전체보기
