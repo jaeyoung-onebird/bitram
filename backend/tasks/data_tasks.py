@@ -2,7 +2,7 @@
 Data collection and maintenance tasks.
 """
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from tasks.celery_app import app
 from config import get_settings
 
@@ -37,8 +37,9 @@ async def _collect_ohlcv_async(timeframe: str):
             try:
                 candles = await client.fetch_ohlcv(market, timeframe, 5)
                 for c in candles:
+                    KST = timezone(timedelta(hours=9))
                     stmt = insert(OHLCV).values(
-                        time=c["time"],
+                        time=datetime.fromisoformat(c["time"]).replace(tzinfo=KST),
                         pair=market,
                         timeframe=timeframe,
                         open=Decimal(str(c["open"])),
