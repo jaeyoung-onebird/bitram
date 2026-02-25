@@ -293,8 +293,8 @@ function CommunityContent() {
                           {catBadge && (
                             <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-semibold ${catBadge.className}`}>{catBadge.label}</span>
                           )}
-                          {post.has_strategy && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-500 font-semibold">전략 첨부</span>
+                          {post.has_strategy && post.category !== "strategy" && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-500 font-semibold">전략첨부</span>
                           )}
                         </div>
                         {/* Title */}
