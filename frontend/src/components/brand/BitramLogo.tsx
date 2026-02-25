@@ -10,52 +10,63 @@ export function BitramMark({ className }: { className?: string }) {
       aria-hidden="true"
     >
       <defs>
-        <linearGradient id="bitram-g" x1="6" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#3182F6" />
-          <stop offset="1" stopColor="#1B64DA" />
+        <linearGradient id="bg-grad" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#5BA8FB" />
+          <stop offset="50%" stopColor="#3182F6" />
+          <stop offset="100%" stopColor="#1B5FD4" />
         </linearGradient>
-        <linearGradient id="bitram-inner" x1="16" y1="16" x2="48" y2="48" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#5BA8FB" />
-          <stop offset="1" stopColor="#3182F6" />
+        <linearGradient id="shine" x1="10" y1="10" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="white" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="white" stopOpacity="0" />
         </linearGradient>
+        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <filter id="shadow" x="-30%" y="-10%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="4" stdDeviation="5" floodColor="#1B5FD4" floodOpacity="0.5" />
+        </filter>
       </defs>
 
-      {/* Chip body - rounded square */}
-      <rect x="10" y="10" width="44" height="44" rx="10" fill="url(#bitram-g)" />
+      {/* Drop shadow glow */}
+      <ellipse cx="32" cy="58" rx="18" ry="4" fill="#3182F6" opacity="0.35" />
+
+      {/* Chip body */}
+      <rect x="10" y="9" width="44" height="44" rx="10" fill="url(#bg-grad)" filter="url(#shadow)" />
+
+      {/* Shine overlay */}
+      <rect x="10" y="9" width="44" height="44" rx="10" fill="url(#shine)" />
 
       {/* Chip pins - top */}
-      <g stroke="#5BA8FB" strokeWidth="2.5" strokeLinecap="round" opacity="0.7">
-        <path d="M24 4v8" />
-        <path d="M32 4v8" />
-        <path d="M40 4v8" />
+      <g stroke="#A8C8F8" strokeWidth="2.2" strokeLinecap="round" opacity="0.85">
+        <line x1="23" y1="4" x2="23" y2="10" />
+        <line x1="32" y1="4" x2="32" y2="10" />
+        <line x1="41" y1="4" x2="41" y2="10" />
         {/* bottom */}
-        <path d="M24 52v8" />
-        <path d="M32 52v8" />
-        <path d="M40 52v8" />
+        <line x1="23" y1="53" x2="23" y2="59" />
+        <line x1="32" y1="53" x2="32" y2="59" />
+        <line x1="41" y1="53" x2="41" y2="59" />
         {/* left */}
-        <path d="M4 24h8" />
-        <path d="M4 32h8" />
-        <path d="M4 40h8" />
+        <line x1="4" y1="22" x2="10" y2="22" />
+        <line x1="4" y1="31" x2="10" y2="31" />
+        <line x1="4" y1="40" x2="10" y2="40" />
         {/* right */}
-        <path d="M52 24h8" />
-        <path d="M52 32h8" />
-        <path d="M52 40h8" />
+        <line x1="54" y1="22" x2="60" y2="22" />
+        <line x1="54" y1="31" x2="60" y2="31" />
+        <line x1="54" y1="40" x2="60" y2="40" />
       </g>
 
       {/* Inner die area */}
-      <rect x="18" y="18" width="28" height="28" rx="4" fill="#0D2B5E" opacity="0.3" />
+      <rect x="17" y="16" width="30" height="30" rx="5" fill="#0D2B6E" opacity="0.25" />
 
-      {/* Circuit traces */}
-      <g stroke="#B3D4FC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.5">
-        <path d="M20 22h4l4 4" />
-        <path d="M44 42h-4l-4-4" />
-      </g>
-
-      {/* B monogram - bold, clean */}
+      {/* B monogram */}
       <path
-        d="M26 21h8c3.2 0 5.5 1.8 5.5 4.5 0 1.8-1 3.2-2.6 3.9 2.1.7 3.4 2.4 3.4 4.5 0 3.2-2.7 5.1-6.3 5.1H26V21zm7.2 7.5c1.6 0 2.6-.9 2.6-2.2 0-1.3-1-2.1-2.6-2.1H30v4.3h3.2zm.5 8.3c2 0 3.2-1 3.2-2.5s-1.2-2.5-3.2-2.5H30v5h3.7z"
+        d="M25 19h9.5c3.6 0 6 2 6 5 0 2-1.1 3.5-2.9 4.3 2.4.8 3.9 2.7 3.9 5.1 0 3.6-2.9 5.6-7 5.6H25V19zm8 8.5c1.8 0 3-1 3-2.5s-1.2-2.4-3-2.4h-4.2v4.9H33zm.6 9.3c2.3 0 3.7-1.2 3.7-2.9 0-1.7-1.4-2.9-3.7-2.9h-4.8v5.8h4.8z"
         fill="white"
-        opacity="0.95"
+        opacity="0.97"
       />
     </svg>
   );
@@ -64,7 +75,7 @@ export function BitramMark({ className }: { className?: string }) {
 export function BitramWordmark({ className }: { className?: string }) {
   return (
     <span className={className}>
-      <span className="font-black tracking-tight text-slate-800 dark:text-slate-100">
+      <span className="font-black tracking-tight text-slate-800 dark:text-white">
         BIT<span className="text-blue-500">RAM</span>
       </span>
     </span>
