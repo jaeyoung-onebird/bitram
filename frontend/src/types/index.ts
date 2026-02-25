@@ -182,6 +182,7 @@ export interface PostListItem {
   author: Author;
   category: string;
   title: string;
+  excerpt?: string;
   like_count: number;
   comment_count: number;
   view_count: number;

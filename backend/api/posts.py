@@ -87,6 +87,7 @@ class PostListItem(BaseModel):
     author: AuthorInfo
     category: str
     title: str
+    excerpt: str | None = None
     like_count: int
     comment_count: int
     view_count: int
@@ -288,6 +289,7 @@ async def list_posts(
             like_count=post.like_count,
             comment_count=post.comment_count,
             view_count=post.view_count,
+            excerpt=_excerpt(post.content),
             has_strategy=post.strategy_id is not None,
             verified_profit_pct=(
                 post.verified_profit.get("total_return_pct")
@@ -511,6 +513,7 @@ async def get_user_profile(
             like_count=post.like_count,
             comment_count=post.comment_count,
             view_count=post.view_count,
+            excerpt=_excerpt(post.content),
             has_strategy=post.strategy_id is not None,
             verified_profit_pct=(
                 post.verified_profit.get("total_return_pct")
@@ -818,6 +821,7 @@ async def personalized_feed(
             like_count=post.like_count,
             comment_count=post.comment_count,
             view_count=post.view_count,
+            excerpt=_excerpt(post.content),
             has_strategy=post.strategy_id is not None,
             verified_profit_pct=(
                 post.verified_profit.get("total_return_pct")
@@ -1294,6 +1298,16 @@ async def get_reactions(
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
+
+def _excerpt(content: str, max_len: int = 120) -> str | None:
+    """Extract plain-text excerpt from post content (strips markdown images/links)."""
+    import re
+    text = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", content or "")  # remove images
+    text = re.sub(r"\[[^\]]*\]\([^)]*\)", r"", text)           # remove links
+    text = re.sub(r"[#*`>_~\-]+", "", text)                    # strip markdown syntax
+    text = " ".join(text.split())                               # collapse whitespace
+    return text[:max_len].rstrip() + "…" if len(text) > max_len else (text or None)
+
 
 def _author(user_id, nickname: str, plan: str, total_points) -> AuthorInfo:
     """Build AuthorInfo with computed level."""

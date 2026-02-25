@@ -30,6 +30,44 @@ const CATEGORY_BADGE_CLASS: Record<string, string> = {
 };
 
 
+function PostDetailSkeleton() {
+  return (
+    <div className="max-w-3xl mx-auto space-y-6 animate-pulse">
+      <div className="h-4 w-20 rounded bg-slate-200 dark:bg-slate-700" />
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-700/60 rounded-xl p-6 space-y-4">
+        <div className="h-3 w-14 rounded-full bg-slate-200 dark:bg-slate-700" />
+        <div className="h-7 w-2/3 rounded bg-slate-200 dark:bg-slate-700" />
+        <div className="flex items-center gap-3 py-4 border-y border-slate-100 dark:border-slate-800">
+          <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 shrink-0" />
+          <div className="space-y-1.5">
+            <div className="h-3 w-20 rounded bg-slate-200 dark:bg-slate-700" />
+            <div className="h-2.5 w-32 rounded bg-slate-200 dark:bg-slate-700" />
+          </div>
+        </div>
+        <div className="space-y-2.5 pt-1">
+          {[100, 100, 85, 100, 70].map((w, i) => (
+            <div key={i} className={`h-3 rounded bg-slate-200 dark:bg-slate-700`} style={{ width: `${w}%` }} />
+          ))}
+        </div>
+      </div>
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-700/60 rounded-xl p-6 space-y-6">
+        <div className="h-4 w-24 rounded bg-slate-200 dark:bg-slate-700" />
+        <div className="h-24 w-full rounded-lg bg-slate-200 dark:bg-slate-700" />
+        {[1, 2].map((i) => (
+          <div key={i} className="flex gap-3">
+            <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 shrink-0 mt-0.5" />
+            <div className="flex-1 space-y-1.5">
+              <div className="h-3 w-24 rounded bg-slate-200 dark:bg-slate-700" />
+              <div className="h-3 w-full rounded bg-slate-200 dark:bg-slate-700" />
+              <div className="h-3 w-3/4 rounded bg-slate-200 dark:bg-slate-700" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function renderContent(text: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
   const regex = /!\[([^\]]*)\]\(([^)]+)\)/g;
@@ -89,9 +127,10 @@ interface CommentItemProps {
   postId: string;
   currentUserId?: string;
   onReplySubmit: () => void;
+  isHot?: boolean;
 }
 
-function CommentItem({ comment, replies, postId, currentUserId, onReplySubmit }: CommentItemProps) {
+function CommentItem({ comment, replies, postId, currentUserId, onReplySubmit, isHot }: CommentItemProps) {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -152,8 +191,22 @@ function CommentItem({ comment, replies, postId, currentUserId, onReplySubmit }:
   };
 
   return (
-    <div className="space-y-3">
-      <div>
+    <div className={`space-y-3 ${isHot ? "relative rounded-xl border border-amber-300/60 dark:border-amber-500/30 bg-amber-500/5 p-4 -mx-1" : ""}`}>
+      {isHot && (
+        <div className="flex items-center gap-1.5 -mt-0.5 mb-2">
+          <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">🏆 인기 댓글</span>
+        </div>
+      )}
+      <div className="flex gap-3">
+        <Link href={`/community/user/${comment.author.id}`} className="shrink-0 mt-0.5">
+          {comment.author.avatar_url ? (
+            <img src={comment.author.avatar_url} alt={comment.author.nickname} className="w-8 h-8 rounded-full object-cover" />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{comment.author.nickname.charAt(0)}</span>
+            </div>
+          )}
+        </Link>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             {comment.author.level != null && (
@@ -500,11 +553,7 @@ export default function PostDetailPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-slate-500 dark:text-slate-400">로딩 중...</div>
-      </div>
-    );
+    return <PostDetailSkeleton />;
   }
 
   if (!post) {
@@ -526,6 +575,12 @@ export default function PostDetailPage() {
       repliesMap[c.parent_id].push(c);
     }
   });
+
+  // hot comment: highest liked comment (min 3 likes)
+  const maxCommentLikes = topLevelComments.reduce((m, c) => Math.max(m, c.like_count), 0);
+  const hotCommentId = maxCommentLikes >= 3
+    ? topLevelComments.find((c) => c.like_count === maxCommentLikes)?.id
+    : undefined;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
@@ -741,6 +796,7 @@ export default function PostDetailPage() {
         <div>
           <div className="flex-1 space-y-2">
             <textarea
+              id="comment-input"
               value={commentContent}
               onChange={(e) => setCommentContent(e.target.value)}
               placeholder="댓글을 입력하세요..."
@@ -772,10 +828,27 @@ export default function PostDetailPage() {
                 postId={postId}
                 currentUserId={user?.id}
                 onReplySubmit={fetchComments}
+                isHot={comment.id === hotCommentId}
               />
             ))}
           </div>
         )}
+      </div>
+
+      {/* Mobile FAB: 댓글 쓰기 */}
+      <div className="fixed bottom-20 right-4 lg:hidden z-20">
+        <button
+          onClick={() => {
+            const el = document.getElementById("comment-input");
+            if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.focus(); }
+          }}
+          className="w-12 h-12 bg-blue-500 hover:bg-blue-600 active:scale-95 text-white rounded-full shadow-lg flex items-center justify-center transition"
+          aria-label="댓글 쓰기"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4l-4 4z" />
+          </svg>
+        </button>
       </div>
 
       {/* Report Modal */}
