@@ -52,7 +52,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
-    if (mounted && !isAuthenticated) router.push("/login");
+    if (!mounted) return;
+    if (isAuthenticated) return;
+    // OAuth 리다이렉트 후 쿠키는 있지만 스토어가 비어있을 수 있으므로 me 먼저 확인
+    api.getMe().then((data) => {
+      if (data?.id) {
+        useAuthStore.getState().setAuth(data);
+      } else {
+        router.push("/login");
+      }
+    }).catch(() => {
+      router.push("/login");
+    });
   }, [mounted, isAuthenticated, router]);
 
   if (!mounted || !isAuthenticated) return null;
