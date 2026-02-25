@@ -337,6 +337,10 @@ export default function PostDetailPage() {
   const [reportReason, setReportReason] = useState("");
   const [reportDesc, setReportDesc] = useState("");
   const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [editingPost, setEditingPost] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
+  const [editSubmitting, setEditSubmitting] = useState(false);
 
   const fetchPost = useCallback(async (guard?: { current: boolean }) => {
     try {
@@ -443,6 +447,29 @@ export default function PostDetailPage() {
     }
   };
 
+  const handleStartEdit = () => {
+    if (!post) return;
+    setEditTitle(post.title);
+    setEditContent(post.content);
+    setEditingPost(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editTitle.trim() || !editContent.trim()) return;
+    setEditSubmitting(true);
+    try {
+      const updated = await api.updatePost(postId, { title: editTitle.trim(), content: editContent.trim() });
+      setPost(updated);
+      setEditingPost(false);
+      toast("게시글이 수정되었습니다.", "success");
+    } catch (err) {
+      console.error("Failed to update post:", err);
+      toast("수정에 실패했습니다.", "error");
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
   const handleReport = async () => {
     if (!reportReason) return;
     setReportSubmitting(true);
@@ -524,7 +551,15 @@ export default function PostDetailPage() {
               </span>
             )}
           </div>
-          <h1 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100">{post.title}</h1>
+          {editingPost ? (
+            <input
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-lg font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-blue-500 transition"
+            />
+          ) : (
+            <h1 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100">{post.title}</h1>
+          )}
         </div>
 
         {/* Author info */}
@@ -562,9 +597,14 @@ export default function PostDetailPage() {
             <span>조회 {post.view_count}</span>
             <span>댓글 {post.comment_count}</span>
             {user?.id === post.author.id && (
-              <button onClick={handleDeletePost} className="text-red-400 hover:text-red-600 transition">
-                삭제
-              </button>
+              <>
+                <button onClick={handleStartEdit} className="text-slate-400 hover:text-blue-500 dark:text-slate-500 dark:hover:text-blue-400 transition">
+                  수정
+                </button>
+                <button onClick={handleDeletePost} className="text-red-400 hover:text-red-600 transition">
+                  삭제
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -589,9 +629,35 @@ export default function PostDetailPage() {
         )}
 
         {/* Content */}
-        <div className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap min-h-[100px]">
-          {renderContent(post.content)}
-        </div>
+        {editingPost ? (
+          <div className="space-y-3">
+            <textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              rows={12}
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:border-blue-500 transition resize-y"
+            />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleSaveEdit}
+                disabled={editSubmitting || !editTitle.trim() || !editContent.trim()}
+                className="px-4 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                {editSubmitting ? "저장 중..." : "저장"}
+              </button>
+              <button
+                onClick={() => setEditingPost(false)}
+                className="px-4 py-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 transition"
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap min-h-[100px]">
+            {renderContent(post.content)}
+          </div>
+        )}
 
         {/* Strategy card */}
         {post.strategy_id && post.strategy_name && (

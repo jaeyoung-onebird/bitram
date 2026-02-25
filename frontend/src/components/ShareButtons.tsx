@@ -55,7 +55,7 @@ export default function ShareButtons({ title, url }: ShareButtonsProps) {
 
   return (
     <div className="flex items-center gap-1.5">
-      <button onClick={handleKakao} className={btnBase} title="카카오톡 공유">
+      <button onClick={handleKakao} className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-[#FEE500] hover:bg-[#F5DC00] transition" title="카카오톡 공유">
         <svg className="w-3.5 h-3.5 text-[#3C1E1E]" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 3C6.477 3 2 6.477 2 10.5c0 2.47 1.607 4.636 4.03 5.896l-.916 3.39c-.073.27.228.483.474.335l3.964-2.385A12.29 12.29 0 0012 18c5.523 0 10-3.477 10-7.5S17.523 3 12 3z" />
         </svg>

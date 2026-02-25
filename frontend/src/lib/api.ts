@@ -273,6 +273,11 @@ class ApiClient {
       method: "POST", body: JSON.stringify(data),
     });
   }
+  updatePost(id: string, data: { title?: string; content?: string }) {
+    return this.request<import("@/types").Post>(`/api/posts/${id}`, {
+      method: "PUT", body: JSON.stringify(data),
+    });
+  }
   deletePost(id: string) {
     return this.request(`/api/posts/${id}`, { method: "DELETE" });
   }

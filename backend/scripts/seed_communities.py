@@ -29,6 +29,8 @@ SEED_COMMUNITIES = [
     {"slug": "free-talk", "name": "자유 토론", "description": "자유롭게 대화하는 공간입니다. 암호화폐, 투자, 일상 등 모든 주제를 환영합니다.", "coin_pair": None, "icon_url": None},
     {"slug": "strategy-sharing", "name": "전략 공유", "description": "자동매매 전략을 공유하고 피드백을 주고받는 게시판입니다.", "coin_pair": None, "icon_url": None},
     {"slug": "qna", "name": "질문/답변", "description": "BITRAM 사용법, 전략 설정, 매매 관련 질문을 올리는 게시판입니다.", "coin_pair": None, "icon_url": None},
+    {"slug": "news-info", "name": "뉴스/정보", "description": "코인 관련 뉴스, 이슈, 정보를 공유하는 게시판입니다.", "coin_pair": None, "icon_url": None},
+    {"slug": "chart-analysis", "name": "차트분석", "description": "코인 차트 분석, 기술적 분석, 매매 시그널을 공유하는 게시판입니다.", "coin_pair": None, "icon_url": None},
 ]
 
 
