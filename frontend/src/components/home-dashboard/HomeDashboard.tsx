@@ -518,17 +518,23 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
         </section>
 
         {/* ── Community Hot Topics ─────────────────────────── */}
-        {trending.length > 0 && (
-          <section className="mt-5 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
+        <section className="mt-5 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
             <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Flame className="h-4 w-4 text-orange-500" />
-                <div className="text-base font-bold dark:text-slate-100">커뮤니티 핫토픽</div>
-                <span className="text-xs text-orange-600 bg-orange-400/10 px-2 py-0.5 rounded-full font-bold">HOT</span>
+                <div className="text-base font-bold dark:text-slate-100">커뮤니티 인기글</div>
+                <span className="text-xs text-orange-600 bg-orange-400/10 px-2 py-0.5 rounded-full font-bold">TOP 5</span>
               </div>
               <Link href="/community" className="text-xs text-blue-500 hover:underline">더보기</Link>
             </div>
 
+            {loading ? (
+              <div className="p-6 text-center text-sm text-slate-400 dark:text-slate-500">불러오는 중...</div>
+            ) : trending.length === 0 ? (
+              <div className="p-6 text-center text-sm text-slate-400 dark:text-slate-500">
+                아직 인기글이 없습니다. 첫 번째 글을 작성해보세요!
+              </div>
+            ) : (
             <div className="p-3 grid sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
               {trending.slice(0, 5).map((t, idx) => (
                 <Link
@@ -590,8 +596,8 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
                 </Link>
               ))}
             </div>
+            )}
           </section>
-        )}
 
         {/* Partner Recruitment Banner */}
         <section className="mt-5 rounded-2xl overflow-hidden border border-amber-300/40 dark:border-amber-500/20 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 dark:from-amber-900/20 dark:via-orange-900/15 dark:to-amber-900/20 shadow-sm">
