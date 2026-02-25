@@ -17,6 +17,7 @@ import {
   Puzzle,
   ReceiptText,
   ShieldCheck,
+  Store,
   type LucideIcon,
 } from "lucide-react";
 import type {
@@ -40,6 +41,7 @@ const HOME_NAV_ITEMS = [
   { href: "/dashboard", label: "대시보드", icon: ChartColumn },
   { href: "/strategies", label: "전략", icon: Puzzle },
   { href: "/bots", label: "봇", icon: BotIcon },
+  { href: "/marketplace", label: "마켓", icon: Store },
   { href: "/trades", label: "거래내역", icon: ReceiptText },
   { href: "/community", label: "커뮤니티", icon: MessageCircle },
 ];

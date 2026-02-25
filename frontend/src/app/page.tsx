@@ -1,5 +1,5 @@
-import HomeDashboard from "@/components/home-dashboard/HomeDashboard";
+import { redirect } from "next/navigation";
 
 export default function HomePage() {
-  return <HomeDashboard embedded={false} />;
+  redirect("/dashboard");
 }
