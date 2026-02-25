@@ -146,12 +146,14 @@ export default function CommunityPage() {
             메시지
             <MessageBadge />
           </Link>
-          <button
-            onClick={() => router.push(activeBoard !== "all" ? `/community/new?board=${activeBoard}` : "/community/new")}
-            className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg transition"
-          >
-            글쓰기
-          </button>
+          {activeBoard === "all" && (
+            <button
+              onClick={() => router.push("/community/new")}
+              className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg transition"
+            >
+              글쓰기
+            </button>
+          )}
         </div>
       </div>
 
@@ -266,6 +268,12 @@ export default function CommunityPage() {
               <div className="flex items-center gap-3 text-xs text-slate-400 dark:text-slate-500 shrink-0">
                 <span>{activeBoardInfo.member_count.toLocaleString()}명</span>
                 <span>{activeBoardInfo.post_count.toLocaleString()}글</span>
+                <button
+                  onClick={() => router.push(`/community/new?board=${activeBoard}`)}
+                  className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded-lg transition"
+                >
+                  글쓰기
+                </button>
               </div>
             </div>
           )}

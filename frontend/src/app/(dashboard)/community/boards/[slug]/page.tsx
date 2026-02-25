@@ -208,33 +208,27 @@ export default function BoardFeedPage() {
             </div>
           </div>
 
-          {/* Join / Leave Button */}
-          <button
-            onClick={handleJoinToggle}
-            disabled={joining}
-            className={`shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed ${
-              community.is_joined
-                ? "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500"
-                : "bg-blue-500 hover:bg-blue-600 text-white"
-            }`}
-          >
-            {joining
-              ? "처리 중..."
-              : community.is_joined
-              ? "탈퇴하기"
-              : "가입하기"}
-          </button>
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleJoinToggle}
+              disabled={joining}
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                community.is_joined
+                  ? "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+              }`}
+            >
+              {joining ? "처리 중..." : community.is_joined ? "탈퇴하기" : "가입하기"}
+            </button>
+            <button
+              onClick={() => router.push(`/community/new?board=${slug}`)}
+              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg transition"
+            >
+              글쓰기
+            </button>
+          </div>
         </div>
-      </div>
-
-      {/* New Post Button */}
-      <div className="flex justify-end">
-        <button
-          onClick={() => router.push(`/community/new?board=${slug}`)}
-          className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg transition"
-        >
-          새 글 작성
-        </button>
       </div>
 
       {/* Post List */}

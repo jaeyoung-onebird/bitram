@@ -10,24 +10,24 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { ToastProvider } from "@/components/Toast";
 import ScrollToTop from "@/components/ScrollToTop";
 import {
-  Bot,
-  ChartColumn,
+  BarChart2,
+  Cpu,
   LogOut,
-  MessageCircle,
-  Puzzle,
-  ReceiptText,
+  MessageSquare,
+  Layers,
+  FileText,
   ShieldCheck,
-  Store,
+  Package2,
   type LucideIcon,
 } from "lucide-react";
 
 const CORE_NAV_ITEMS = [
-  { href: "/dashboard", label: "대시보드", icon: ChartColumn },
-  { href: "/strategies", label: "전략", icon: Puzzle },
-  { href: "/bots", label: "봇", icon: Bot },
-  { href: "/marketplace", label: "마켓", icon: Store },
-  { href: "/trades", label: "거래내역", icon: ReceiptText },
-  { href: "/community", label: "커뮤니티", icon: MessageCircle },
+  { href: "/dashboard", label: "대시보드", icon: BarChart2 },
+  { href: "/strategies", label: "전략", icon: Layers },
+  { href: "/bots", label: "봇", icon: Cpu },
+  { href: "/marketplace", label: "마켓", icon: Package2 },
+  { href: "/trades", label: "거래내역", icon: FileText },
+  { href: "/community", label: "커뮤니티", icon: MessageSquare },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -72,17 +72,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <ToastProvider>
     <div className="min-h-screen flex flex-col">
       {/* Top Nav */}
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
-        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
+      <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 h-12 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Link href="/dashboard" className="inline-flex items-center" aria-label="BITRAM 홈">
               <BitramLogo />
             </Link>
-            <span className="hidden sm:inline-flex px-2 py-0.5 rounded-md bg-blue-500 text-white text-xs font-bold tracking-tight">
-              업비트 노코드 자동매매
-            </span>
           </div>
-          <nav aria-label="메인 네비게이션" className="hidden md:flex items-center gap-1.5">
+          <nav aria-label="메인 네비게이션" className="hidden md:flex items-center gap-0.5">
             {navItems.map((item) => {
               const Icon: LucideIcon = item.icon;
               const active = pathname.startsWith(item.href);
@@ -90,16 +87,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-base font-medium transition ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-normal transition ${
                     active
                       ? "bg-blue-50 dark:bg-blue-500/15 text-blue-500"
                       : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
                   }`}
                 >
-                  <Icon className="h-4 w-4" aria-hidden="true" />
+                  <Icon className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
                   <span className="hidden lg:inline">{item.label}</span>
                   <span className="lg:hidden sr-only">{item.label}</span>
-                                  </Link>
+                </Link>
               );
             })}
           </nav>
@@ -162,7 +159,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   }`}
                 >
                   <span className="relative">
-                    <Icon aria-hidden="true" className={`h-4 w-4 ${active ? "drop-shadow-[0_0_8px_rgba(49,130,246,0.5)]" : ""}`} />
+                    <Icon aria-hidden="true" strokeWidth={1.5} className={`h-4 w-4 ${active ? "drop-shadow-[0_0_8px_rgba(49,130,246,0.5)]" : ""}`} />
                                       </span>
                   <span className="truncate text-xs font-medium leading-none whitespace-nowrap">
                     {item.label}
