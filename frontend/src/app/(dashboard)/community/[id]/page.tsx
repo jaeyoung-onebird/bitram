@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -68,32 +68,129 @@ function PostDetailSkeleton() {
   );
 }
 
-function renderContent(text: string): React.ReactNode[] {
-  const parts: React.ReactNode[] = [];
-  const regex = /!\[([^\]]*)\]\(([^)]+)\)/g;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-  let key = 0;
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
+function renderMarkdown(raw: string): React.ReactNode {
+  // ── Inline formatter ─────────────────────────────────────────────────────
+  function inlineFmt(str: string, baseKey: string): React.ReactNode[] {
+    const out: React.ReactNode[] = [];
+    const re = /!\[([^\]]*)\]\(([^)]+)\)|\*\*(.+?)\*\*|\*(.+?)\*|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)/g;
+    let last = 0; let k = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(str)) !== null) {
+      if (m.index > last) out.push(str.slice(last, m.index));
+      if (m[0].startsWith("![")) {
+        out.push(<img key={`${baseKey}-${k++}`} src={m[2]} alt={m[1]} className="max-w-full rounded-lg my-2 block" loading="lazy" />);
+      } else if (m[0].startsWith("**")) {
+        out.push(<strong key={`${baseKey}-${k++}`} className="font-bold">{m[3]}</strong>);
+      } else if (m[0].startsWith("*")) {
+        out.push(<em key={`${baseKey}-${k++}`} className="italic">{m[4]}</em>);
+      } else if (m[0].startsWith("`")) {
+        out.push(<code key={`${baseKey}-${k++}`} className="font-mono text-[0.82em] bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded">{m[5]}</code>);
+      } else {
+        out.push(<a key={`${baseKey}-${k++}`} href={m[7]} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{m[6]}</a>);
+      }
+      last = re.lastIndex;
     }
-    const src = match[2].startsWith("/") ? match[2] : match[2];
-    parts.push(
-      <img
-        key={key++}
-        src={src}
-        alt={match[1] || "이미지"}
-        className="max-w-full rounded-lg my-2"
-        loading="lazy"
-      />
-    );
-    lastIndex = regex.lastIndex;
+    if (last < str.length) out.push(str.slice(last));
+    return out;
   }
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
+
+  // ── Block renderer ────────────────────────────────────────────────────────
+  const lines = (raw || "").split("\n");
+  const nodes: React.ReactNode[] = [];
+  let i = 0; let key = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Heading
+    const hm = line.match(/^(#{1,3})\s+(.*)/);
+    if (hm) {
+      const lvl = hm[1].length;
+      const cls = lvl === 1 ? "text-2xl font-bold mt-6 mb-3 text-slate-900 dark:text-slate-50"
+                : lvl === 2 ? "text-xl font-bold mt-5 mb-2 text-slate-800 dark:text-slate-100 border-b border-slate-200 dark:border-slate-700 pb-1"
+                :              "text-lg font-semibold mt-4 mb-1.5 text-slate-800 dark:text-slate-100";
+      const Tag = `h${lvl}` as "h1"|"h2"|"h3";
+      nodes.push(<Tag key={key++} className={cls}>{inlineFmt(hm[2], `h${key}`)}</Tag>);
+      i++; continue;
+    }
+
+    // Code block
+    if (line.startsWith("```")) {
+      const codeLines: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i].startsWith("```")) { codeLines.push(lines[i]); i++; }
+      nodes.push(
+        <pre key={key++} className="bg-slate-900 dark:bg-black rounded-xl p-4 overflow-x-auto my-3 text-emerald-300 text-sm font-mono leading-relaxed">
+          <code>{codeLines.join("\n")}</code>
+        </pre>
+      );
+      i++; continue;
+    }
+
+    // Blockquote
+    if (line.startsWith("> ")) {
+      const ql: string[] = [];
+      while (i < lines.length && lines[i].startsWith("> ")) { ql.push(lines[i].slice(2)); i++; }
+      nodes.push(
+        <blockquote key={key++} className="border-l-4 border-blue-400 dark:border-blue-500 pl-4 py-1 my-3 bg-blue-50/60 dark:bg-blue-500/5 rounded-r-lg italic text-slate-500 dark:text-slate-400">
+          {ql.map((q, qi) => <p key={qi}>{inlineFmt(q, `bq${key}-${qi}`)}</p>)}
+        </blockquote>
+      );
+      continue;
+    }
+
+    // HR
+    if (/^-{3,}$/.test(line.trim())) {
+      nodes.push(<hr key={key++} className="border-slate-200 dark:border-slate-700 my-4" />);
+      i++; continue;
+    }
+
+    // Unordered list
+    if (/^[-*+] /.test(line)) {
+      const items: string[] = [];
+      while (i < lines.length && /^[-*+] /.test(lines[i])) { items.push(lines[i].replace(/^[-*+] /, "")); i++; }
+      nodes.push(
+        <ul key={key++} className="list-disc pl-5 my-2 space-y-1 text-slate-600 dark:text-slate-300">
+          {items.map((it, ii) => <li key={ii}>{inlineFmt(it, `ul${key}-${ii}`)}</li>)}
+        </ul>
+      );
+      continue;
+    }
+
+    // Ordered list
+    if (/^\d+\. /.test(line)) {
+      const items: string[] = [];
+      while (i < lines.length && /^\d+\. /.test(lines[i])) { items.push(lines[i].replace(/^\d+\. /, "")); i++; }
+      nodes.push(
+        <ol key={key++} className="list-decimal pl-5 my-2 space-y-1 text-slate-600 dark:text-slate-300">
+          {items.map((it, ii) => <li key={ii}>{inlineFmt(it, `ol${key}-${ii}`)}</li>)}
+        </ol>
+      );
+      continue;
+    }
+
+    // Empty line
+    if (line.trim() === "") { i++; continue; }
+
+    // Paragraph (greedy — collect until next block)
+    const pLines: string[] = [];
+    while (i < lines.length) {
+      const l = lines[i];
+      if (l.trim() === "" || /^#{1,3} /.test(l) || l.startsWith("```") || l.startsWith("> ") || /^[-*+] /.test(l) || /^\d+\. /.test(l) || /^-{3,}$/.test(l.trim())) break;
+      pLines.push(l); i++;
+    }
+    if (pLines.length) {
+      nodes.push(
+        <p key={key++} className="text-slate-600 dark:text-slate-300 leading-relaxed mb-1.5">
+          {pLines.map((pl, pi) => (
+            <React.Fragment key={pi}>{inlineFmt(pl, `p${key}-${pi}`)}{pi < pLines.length - 1 && <br />}</React.Fragment>
+          ))}
+        </p>
+      );
+    }
   }
-  return parts;
+
+  return <div className="prose-md text-sm">{nodes}</div>;
 }
 
 function formatDate(dateStr: string): string {
@@ -139,10 +236,12 @@ function CommentItem({ comment, replies, postId, currentUserId, onReplySubmit, i
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [liked, setLiked] = useState(comment.is_liked);
   const [likeCount, setLikeCount] = useState(comment.like_count);
+  const [likedAnim, setLikedAnim] = useState(false);
   const isOwner = currentUserId === comment.author.id;
 
   const handleToggleLike = async () => {
     try {
+      if (!liked) { setLikedAnim(true); setTimeout(() => setLikedAnim(false), 450); }
       const result = await api.toggleCommentLike(postId, comment.id);
       setLiked(result.liked);
       setLikeCount((prev) => (result.liked ? prev + 1 : prev - 1));
@@ -236,11 +335,14 @@ function CommentItem({ comment, replies, postId, currentUserId, onReplySubmit, i
             <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{comment.content}</p>
           )}
           <div className="flex items-center gap-3 mt-2">
-            <button onClick={handleToggleLike} className={`text-xs transition flex items-center gap-1 ${liked ? "text-red-400" : "text-slate-500 dark:text-slate-400 hover:text-red-400"}`}>
-              <svg className="w-3 h-3" fill={liked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
+            <button onClick={handleToggleLike} className={`text-xs transition flex items-center gap-1.5 ${liked ? "text-red-400" : "text-slate-500 dark:text-slate-400 hover:text-red-400"}`}>
+              <span className="relative inline-flex">
+                <svg className={`w-3 h-3 transition-transform ${likedAnim ? "animate-heart-pop" : ""}`} fill={liked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+                {likedAnim && <span className="animate-float-heart text-red-400 text-[10px]">♥</span>}
+              </span>
               {likeCount}
             </button>
             <button
@@ -304,9 +406,11 @@ function ReplyItem({ reply, postId, isOwner, onUpdate }: { reply: Comment; postI
   const [busy, setBusy] = useState(false);
   const [liked, setLiked] = useState(reply.is_liked);
   const [likeCount, setLikeCount] = useState(reply.like_count);
+  const [likedAnim, setLikedAnim] = useState(false);
 
   const handleToggleLike = async () => {
     try {
+      if (!liked) { setLikedAnim(true); setTimeout(() => setLikedAnim(false), 450); }
       const result = await api.toggleCommentLike(postId, reply.id);
       setLiked(result.liked);
       setLikeCount((prev) => (result.liked ? prev + 1 : prev - 1));
@@ -358,11 +462,14 @@ function ReplyItem({ reply, postId, isOwner, onUpdate }: { reply: Comment; postI
           <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{reply.content}</p>
         )}
         <div className="flex items-center gap-3 mt-1">
-          <button onClick={handleToggleLike} className={`text-xs transition flex items-center gap-1 ${liked ? "text-red-400" : "text-slate-500 dark:text-slate-400 hover:text-red-400"}`}>
-            <svg className="w-3 h-3" fill={liked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-            </svg>
+          <button onClick={handleToggleLike} className={`text-xs transition flex items-center gap-1.5 ${liked ? "text-red-400" : "text-slate-500 dark:text-slate-400 hover:text-red-400"}`}>
+            <span className="relative inline-flex">
+              <svg className={`w-3 h-3 ${likedAnim ? "animate-heart-pop" : ""}`} fill={liked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+              {likedAnim && <span className="animate-float-heart text-red-400 text-[10px]">♥</span>}
+            </span>
             {likeCount}
           </button>
         </div>
@@ -709,8 +816,8 @@ export default function PostDetailPage() {
             </div>
           </div>
         ) : (
-          <div className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap min-h-[100px]">
-            {renderContent(post.content)}
+          <div className="min-h-[100px]">
+            {renderMarkdown(post.content)}
           </div>
         )}
 

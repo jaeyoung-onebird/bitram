@@ -183,6 +183,7 @@ export interface PostListItem {
   category: string;
   title: string;
   excerpt?: string;
+  thumbnail_url?: string;
   like_count: number;
   comment_count: number;
   view_count: number;

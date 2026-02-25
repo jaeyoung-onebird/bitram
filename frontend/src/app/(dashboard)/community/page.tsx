@@ -310,6 +310,11 @@ function CommunityContent() {
                     <Link key={post.id} href={`/community/${post.id}`}
                       className="flex items-start gap-4 px-5 py-4 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition group"
                     >
+                      {post.thumbnail_url && (
+                        <div className="shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 mt-0.5">
+                          <img src={post.thumbnail_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         {/* Badges */}
                         <div className="flex flex-wrap items-center gap-1.5 mb-1.5">

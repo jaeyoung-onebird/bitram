@@ -88,6 +88,7 @@ class PostListItem(BaseModel):
     category: str
     title: str
     excerpt: str | None = None
+    thumbnail_url: str | None = None
     like_count: int
     comment_count: int
     view_count: int
@@ -290,6 +291,7 @@ async def list_posts(
             comment_count=post.comment_count,
             view_count=post.view_count,
             excerpt=_excerpt(post.content),
+            thumbnail_url=_thumbnail(post.content),
             has_strategy=post.strategy_id is not None,
             verified_profit_pct=(
                 post.verified_profit.get("total_return_pct")
@@ -514,6 +516,7 @@ async def get_user_profile(
             comment_count=post.comment_count,
             view_count=post.view_count,
             excerpt=_excerpt(post.content),
+            thumbnail_url=_thumbnail(post.content),
             has_strategy=post.strategy_id is not None,
             verified_profit_pct=(
                 post.verified_profit.get("total_return_pct")
@@ -822,6 +825,7 @@ async def personalized_feed(
             comment_count=post.comment_count,
             view_count=post.view_count,
             excerpt=_excerpt(post.content),
+            thumbnail_url=_thumbnail(post.content),
             has_strategy=post.strategy_id is not None,
             verified_profit_pct=(
                 post.verified_profit.get("total_return_pct")
@@ -1307,6 +1311,13 @@ def _excerpt(content: str, max_len: int = 120) -> str | None:
     text = re.sub(r"[#*`>_~\-]+", "", text)                    # strip markdown syntax
     text = " ".join(text.split())                               # collapse whitespace
     return text[:max_len].rstrip() + "…" if len(text) > max_len else (text or None)
+
+
+def _thumbnail(content: str) -> str | None:
+    """Extract first image URL from markdown content."""
+    import re
+    m = re.search(r"!\[[^\]]*\]\(([^)]+)\)", content or "")
+    return m.group(1) if m else None
 
 
 def _author(user_id, nickname: str, plan: str, total_points) -> AuthorInfo:
