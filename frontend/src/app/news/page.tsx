@@ -66,36 +66,41 @@ export default function NewsPage() {
   }, [items, q, source]);
 
   return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 z-50 border-b border-slate-100 bg-white/95 backdrop-blur">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-3">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <header className="sticky top-0 z-50 border-b border-slate-200/60 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur">
+        <div className="max-w-5xl mx-auto px-4 h-12 flex items-center gap-3">
           <Link href="/" className="inline-flex items-center">
             <BitramLogo />
           </Link>
-          <div className="text-sm font-black text-slate-700">뉴스</div>
+          <div className="flex items-center gap-1.5">
+            <div className="text-sm font-bold text-slate-700 dark:text-slate-100">코인 뉴스</div>
+            <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-yellow-400/15 text-yellow-600 dark:text-yellow-400 tracking-wider">⚡FAST</span>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-violet-500/10 text-violet-500 dark:text-violet-400">AI번역</span>
+          </div>
           <div className="flex-1" />
-          <Link href="/" className="text-xs text-slate-400 hover:text-slate-800">
+          <Link href="/" className="text-xs text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition">
             대시보드
           </Link>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-4 text-sm">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        {/* Filter bar */}
+        <div className="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900 shadow-sm p-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-            <div className="text-sm font-black text-slate-700">최신 코인 뉴스</div>
+            <div className="text-sm font-bold text-slate-800 dark:text-slate-100">최신 코인 뉴스</div>
             <div className="flex-1" />
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="키워드 검색"
-                className="w-full sm:w-64 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                className="w-full sm:w-64 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition"
               />
               <select
                 value={source}
                 onChange={(e) => setSource(e.target.value)}
-                className="w-full sm:w-56 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                className="w-full sm:w-56 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:border-blue-500 transition"
               >
                 {sources.map((s) => (
                   <option key={s} value={s}>
@@ -105,24 +110,24 @@ export default function NewsPage() {
               </select>
             </div>
           </div>
-
-          <div className="mt-3 text-xs text-slate-500">
+          <div className="mt-2 text-xs text-slate-400 dark:text-slate-500">
             번역은 서버에서 수행합니다. 최신 RSS 소스가 추가되면 자동으로 더 빨라집니다.
           </div>
         </div>
 
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-            <div className="text-sm font-black text-slate-700">피드</div>
-            <div className="text-xs text-slate-500">
+        {/* Feed */}
+        <div className="mt-4 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div className="text-sm font-bold text-slate-800 dark:text-slate-100">피드</div>
+            <div className="text-xs text-slate-400 dark:text-slate-500">
               {loading ? "불러오는 중..." : `${filtered.length}개`}
             </div>
           </div>
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {loading ? (
-              <div className="p-4 text-sm text-slate-500">불러오는 중...</div>
+              <div className="p-4 text-sm text-slate-400 dark:text-slate-500">불러오는 중...</div>
             ) : filtered.length === 0 ? (
-              <div className="p-4 text-sm text-slate-500">표시할 뉴스가 없습니다.</div>
+              <div className="p-4 text-sm text-slate-400 dark:text-slate-500">표시할 뉴스가 없습니다.</div>
             ) : (
               filtered.map((n, i) => (
                 <a
@@ -130,13 +135,13 @@ export default function NewsPage() {
                   href={n.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="block px-4 py-3 hover:bg-slate-100 transition"
+                  className="block px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition"
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <div className="text-xs text-slate-500 truncate">{n.source}</div>
-                    <div className="text-xs text-slate-500">{timeAgo(n.published_ts ?? n.published_at)}</div>
+                    <div className="text-xs text-slate-400 dark:text-slate-500 truncate">{n.source}</div>
+                    <div className="text-xs text-slate-400 dark:text-slate-500 shrink-0">{timeAgo(n.published_ts ?? n.published_at)}</div>
                   </div>
-                  <div className="mt-1 text-sm font-bold text-slate-700 line-clamp-2">
+                  <div className="mt-1 text-sm font-bold text-slate-700 dark:text-slate-200 line-clamp-2">
                     {n.title_ko || n.title}
                   </div>
                 </a>
