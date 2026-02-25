@@ -471,7 +471,11 @@ export default function HomeDashboard({ embedded = false }: { embedded?: boolean
         {/* Top: Market / Breaking ticker */}
         <section className="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800 overflow-hidden shadow-sm">
           <div className="px-4 py-3 flex items-center gap-3 border-b border-slate-200/60 dark:border-slate-700/60">
-            <span className="text-xs font-black px-2 py-1 rounded-lg bg-emerald-500/15 text-emerald-600 border border-emerald-400/20">
+            <span className="relative inline-flex items-center gap-1.5 text-xs font-black px-2 py-1 rounded-lg bg-emerald-500/15 text-emerald-600 border border-emerald-400/20">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
               LIVE
             </span>
             <div className="flex-1 overflow-hidden">
