@@ -146,14 +146,6 @@ export default function CommunityPage() {
             메시지
             <MessageBadge />
           </Link>
-          {activeBoard === "all" && (
-            <button
-              onClick={() => router.push("/community/new")}
-              className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg transition"
-            >
-              글쓰기
-            </button>
-          )}
         </div>
       </div>
 
