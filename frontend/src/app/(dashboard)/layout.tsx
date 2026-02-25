@@ -72,14 +72,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <ToastProvider>
     <div className="min-h-screen flex flex-col">
       {/* Top Nav */}
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 h-12 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Link href="/dashboard" className="inline-flex items-center" aria-label="BITRAM 홈">
-              <BitramLogo />
-            </Link>
-          </div>
-          <nav aria-label="메인 네비게이션" className="hidden md:flex items-center gap-0.5">
+      <header className="sticky top-0 z-50 bg-white dark:bg-[#0f1724] border-b border-slate-200/70 dark:border-slate-800/80 shadow-sm">
+        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between gap-8">
+
+          {/* Logo */}
+          <Link href="/dashboard" className="inline-flex items-center shrink-0" aria-label="BITRAM 홈">
+            <BitramLogo markClassName="h-7 w-7" />
+          </Link>
+
+          {/* Center Nav */}
+          <nav aria-label="메인 네비게이션" className="hidden md:flex items-stretch h-14 gap-1">
             {navItems.map((item) => {
               const Icon: LucideIcon = item.icon;
               const active = pathname.startsWith(item.href);
@@ -87,51 +89,52 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-normal transition ${
+                  className={`relative inline-flex items-center gap-2 px-4 text-sm font-medium transition-colors ${
                     active
-                      ? "bg-blue-50 dark:bg-blue-500/15 text-blue-500"
-                      : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      ? "text-blue-500 dark:text-blue-400"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
                   }`}
                 >
-                  <Icon className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
-                  <span className="hidden lg:inline">{item.label}</span>
-                  <span className="lg:hidden sr-only">{item.label}</span>
+                  <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+                  {item.label}
+                  {active && (
+                    <span className="absolute bottom-0 inset-x-0 h-0.5 bg-blue-500 dark:bg-blue-400 rounded-t-full" />
+                  )}
                 </Link>
               );
             })}
           </nav>
-          <div className="flex items-center gap-1">
+
+          {/* Right side */}
+          <div className="flex items-center gap-3 shrink-0">
             <ThemeToggle />
             <NotificationBell />
-            <div className="hidden sm:block w-px h-5 bg-slate-200 dark:bg-slate-700 mx-1" />
+            <div className="hidden sm:block w-px h-5 bg-slate-200 dark:bg-slate-700" />
             <Link
               href="/settings"
-              className={`hidden sm:inline text-sm font-medium transition ${
+              className={`hidden sm:inline-flex items-center gap-1.5 text-sm font-medium transition ${
                 pathname.startsWith("/settings")
-                  ? "text-blue-500"
+                  ? "text-blue-500 dark:text-blue-400"
                   : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
               }`}
             >
+              <span className="w-6 h-6 rounded-full bg-blue-500/15 text-blue-500 dark:text-blue-400 text-xs font-black flex items-center justify-center">
+                {user?.nickname?.charAt(0)?.toUpperCase() ?? "U"}
+              </span>
               {user?.nickname}
             </Link>
-            <Link
-              href="/settings"
-              aria-label="설정"
-              className={`sm:hidden p-1.5 rounded-lg transition ${
-                pathname.startsWith("/settings")
-                  ? "text-blue-500"
-                  : "text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800"
-              }`}
+            <button
+              onClick={handleLogout}
+              aria-label="로그아웃"
+              className="hidden sm:inline-flex text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 transition"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </Link>
-            <button onClick={handleLogout} aria-label="로그아웃" className="hidden sm:inline-flex text-xs px-2 py-1 rounded-md text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">로그아웃</button>
-            <button onClick={handleLogout} aria-label="로그아웃" className="sm:hidden p-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
-              <LogOut className="w-5 h-5" />
+              로그아웃
+            </button>
+            <button onClick={handleLogout} aria-label="로그아웃" className="sm:hidden p-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:hover:text-slate-100 transition">
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
+
         </div>
       </header>
 
