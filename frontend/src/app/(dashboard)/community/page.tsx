@@ -17,16 +17,6 @@ const SORT_OPTIONS = [
   { key: "recommended", label: "✨ 추천" },
 ];
 
-const CATEGORY_FILTER = [
-  { key: "", label: "전체" },
-  { key: "profit", label: "💰 수익인증" },
-  { key: "strategy", label: "📈 전략공유" },
-  { key: "chart", label: "📊 차트분석" },
-  { key: "news", label: "📰 뉴스/정보" },
-  { key: "question", label: "❓ 질문/답변" },
-  { key: "humor", label: "😂 유머" },
-  { key: "free", label: "💬 자유" },
-];
 
 const CATEGORY_BADGE: Record<string, { label: string; className: string }> = {
   strategy: { label: "전략공유", className: "bg-blue-500/10 text-blue-500" },
@@ -78,7 +68,6 @@ function CommunityContent() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState("");
 
   const [boards, setBoards] = useState<CommunityBoard[]>([]);
   const [activeBoard, setActiveBoard] = useState<string>(searchParams.get("board") || "all");
@@ -106,7 +95,7 @@ function CommunityContent() {
           is_pinned: false, created_at: t.created_at,
         }));
       } else {
-        result = await api.getPosts({ sort, page, category: activeCategory || undefined });
+        result = await api.getPosts({ sort, page });
       }
       setPosts(result);
       setHasMore(sort !== "trending" && sort !== "recommended" && result.length >= 20);
@@ -115,13 +104,12 @@ function CommunityContent() {
     } finally {
       setLoading(false);
     }
-  }, [activeBoard, sort, page, searchQuery, activeCategory]);
+  }, [activeBoard, sort, page, searchQuery]);
 
   useEffect(() => { fetchPosts(); }, [fetchPosts]);
 
-  const handleBoardChange = (slug: string) => { setActiveBoard(slug); setPage(1); setSearchQuery(""); setActiveCategory(""); };
+  const handleBoardChange = (slug: string) => { setActiveBoard(slug); setPage(1); setSearchQuery(""); };
   const handleSortChange = (key: string) => { setSort(key); setPage(1); };
-  const handleCategoryChange = (cat: string) => { setActiveCategory(cat); setPage(1); };
 
   const coinBoards = boards.filter((b) => b.coin_pair);
   const topicBoards = boards.filter((b) => !b.coin_pair);
@@ -274,17 +262,6 @@ function CommunityContent() {
               )}
             </div>
           </div>
-
-          {/* ── Category Filter Chips ─────────────────────── */}
-          {activeBoard === "all" && !searchQuery && (
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
-              {CATEGORY_FILTER.map((cat) => (
-                <button key={cat.key} onClick={() => handleCategoryChange(cat.key)}
-                  className={`shrink-0 px-3 py-1 text-xs font-semibold rounded-full whitespace-nowrap transition ${activeCategory === cat.key ? "bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 shadow-sm" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"}`}
-                >{cat.label}</button>
-              ))}
-            </div>
-          )}
 
           {/* ── Post list ─────────────────────────────────── */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-700/60 rounded-2xl shadow-sm overflow-hidden">
