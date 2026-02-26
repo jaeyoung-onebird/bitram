@@ -1,0 +1,312 @@
+"""
+Bots API: create, start, stop, pause, list, trades, profit
+"""
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
+from uuid import UUID
+from decimal import Decimal
+
+from db.database import get_db
+from db.models import User, Bot, Trade, Strategy, ExchangeKey
+from api.deps import get_current_user, get_plan_limits
+from core.bot_manager import start_bot, stop_bot, pause_bot
+
+router = APIRouter(prefix="/api/bots", tags=["bots"])
+
+
+class BotCreateRequest(BaseModel):
+    name: str
+    strategy_id: str
+    exchange_key_id: str | None = None
+    max_investment: float = 1_000_000
+    demo: bool = False
+
+
+class BotResponse(BaseModel):
+    id: str
+    name: str
+    strategy_id: str | None
+    strategy_name: str | None = None
+    status: str
+    pair: str | None = None
+    max_investment: float
+    total_profit: float
+    total_trades: int
+    win_trades: int
+    win_rate: float
+    error_message: str | None
+    started_at: str | None
+    created_at: str
+
+
+class TradeResponse(BaseModel):
+    id: str
+    side: str
+    pair: str
+    price: float
+    quantity: float
+    total_krw: float
+    fee: float
+    profit: float | None
+    profit_pct: float | None
+    trigger_reason: str | None
+    executed_at: str
+
+
+@router.post("", response_model=BotResponse)
+async def create_bot(
+    req: BotCreateRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    limits = get_plan_limits(user.plan)
+    if limits["max_bots"] > 0:
+        # Add level bonus bots
+        from core.points import get_level_perks, compute_level
+        from db.models import UserPoints
+        up = (await db.execute(select(UserPoints.total_points).where(UserPoints.user_id == user.id))).scalar_one_or_none()
+        lv = compute_level(up or 0)
+        perks = get_level_perks(lv)
+        max_bots = limits["max_bots"] + perks.get("extra_bots", 0)
+
+        stmt = select(func.count()).select_from(Bot).where(
+            Bot.user_id == user.id, Bot.status != "stopped"
+        )
+        result = await db.execute(stmt)
+        count = result.scalar()
+        if count >= max_bots:
+            raise HTTPException(403, f"현재 봇 수 한도({max_bots}개, 플랜 {limits['max_bots']} + 레벨 보너스 {perks.get('extra_bots', 0)})에 도달했습니다.")
+
+    # Validate strategy ownership
+    stmt = select(Strategy).where(Strategy.id == UUID(req.strategy_id), Strategy.user_id == user.id)
+    result = await db.execute(stmt)
+    strategy = result.scalar_one_or_none()
+    if not strategy:
+        raise HTTPException(404, "전략을 찾을 수 없습니다.")
+
+    # Demo mode: no exchange key needed, paper trading only
+    key_id = None
+    if req.demo:
+        pass  # No key needed for demo bots
+    else:
+        if not req.exchange_key_id:
+            raise HTTPException(400, "실거래 봇에는 API 키가 필요합니다. 데모 모드를 사용하려면 demo=true로 설정하세요.")
+        stmt = select(ExchangeKey).where(ExchangeKey.id == UUID(req.exchange_key_id), ExchangeKey.user_id == user.id)
+        result = await db.execute(stmt)
+        key = result.scalar_one_or_none()
+        if not key or not key.is_valid:
+            raise HTTPException(400, "유효한 API 키가 필요합니다.")
+        key_id = key.id
+
+    bot = Bot(
+        user_id=user.id,
+        strategy_id=strategy.id,
+        exchange_key_id=key_id,
+        name=f"[데모] {req.name}" if req.demo else req.name,
+        max_investment=Decimal(str(req.max_investment)),
+        is_demo=req.demo,
+    )
+    db.add(bot)
+
+    # Award first bot creation points
+    try:
+        from core.points import award_points
+        await award_points(db, user.id, "first_bot", "첫 봇 생성")
+    except Exception:
+        pass
+
+    await db.commit()
+    await db.refresh(bot)
+
+    return _to_response(bot, strategy)
+
+
+@router.get("", response_model=list[BotResponse])
+async def list_bots(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    stmt = (
+        select(Bot, Strategy)
+        .outerjoin(Strategy, Bot.strategy_id == Strategy.id)
+        .where(Bot.user_id == user.id)
+        .order_by(Bot.created_at.desc())
+    )
+    result = await db.execute(stmt)
+    rows = result.all()
+    return [_to_response(bot, strategy) for bot, strategy in rows]
+
+
+@router.post("/{bot_id}/start")
+async def start_bot_endpoint(
+    bot_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    bot = await _get_user_bot(bot_id, user.id, db)
+    if bot.status == "running":
+        raise HTTPException(400, "봇이 이미 실행 중입니다.")
+
+    result = await start_bot(bot.id, db)
+    if "error" in result:
+        raise HTTPException(400, result["error"])
+    return result
+
+
+@router.post("/{bot_id}/stop")
+async def stop_bot_endpoint(
+    bot_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    bot = await _get_user_bot(bot_id, user.id, db)
+    result = await stop_bot(bot.id, db)
+    return result
+
+
+@router.post("/{bot_id}/pause")
+async def pause_bot_endpoint(
+    bot_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    bot = await _get_user_bot(bot_id, user.id, db)
+    result = await pause_bot(bot.id, db)
+    return result
+
+
+@router.get("/{bot_id}/trades", response_model=list[TradeResponse])
+async def get_bot_trades(
+    bot_id: str,
+    page: int = Query(1, ge=1),
+    size: int = Query(50, ge=1, le=100),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    bot = await _get_user_bot(bot_id, user.id, db)
+    stmt = (
+        select(Trade)
+        .where(Trade.bot_id == bot.id)
+        .order_by(Trade.executed_at.desc())
+        .offset((page - 1) * size)
+        .limit(size)
+    )
+    result = await db.execute(stmt)
+    trades = result.scalars().all()
+    return [_trade_response(t) for t in trades]
+
+
+@router.get("/{bot_id}/profit")
+async def get_bot_profit(
+    bot_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    bot = await _get_user_bot(bot_id, user.id, db)
+    return {
+        "total_profit": float(bot.total_profit or 0),
+        "total_trades": bot.total_trades or 0,
+        "win_trades": bot.win_trades or 0,
+        "win_rate": (bot.win_trades / bot.total_trades * 100) if bot.total_trades else 0,
+    }
+
+
+@router.post("/{bot_id}/share-profit")
+async def share_bot_profit(
+    bot_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a community post with auto-populated verified profit from bot data."""
+    from db.models import Post
+
+    bot = await _get_user_bot(bot_id, user.id, db)
+
+    if not bot.total_trades or bot.total_trades == 0:
+        raise HTTPException(400, "거래 내역이 없는 봇은 수익을 공유할 수 없습니다.")
+
+    strategy = None
+    if bot.strategy_id:
+        strategy = await db.get(Strategy, bot.strategy_id)
+
+    total = bot.total_trades or 0
+    wins = bot.win_trades or 0
+    win_rate = round(wins / total * 100, 1) if total > 0 else 0
+
+    verified_profit = {
+        "live_profit_krw": float(bot.total_profit or 0),
+        "live_trades": total,
+        "live_win_rate": win_rate,
+        "bot_name": bot.name,
+        "verified": True,
+    }
+
+    if strategy and strategy.backtest_result:
+        verified_profit["total_return_pct"] = strategy.backtest_result.get("total_return_pct")
+
+    profit_str = f"+{int(bot.total_profit)}원" if bot.total_profit >= 0 else f"{int(bot.total_profit)}원"
+    post = Post(
+        user_id=user.id,
+        category="profit",
+        title=f"[{bot.name}] 수익 인증 {profit_str} (승률 {win_rate}%)",
+        content=f"봇 '{bot.name}'의 실시간 수익을 인증합니다.\n\n총 거래: {total}건\n승률: {win_rate}%\n총 수익: {profit_str}",
+        strategy_id=bot.strategy_id,
+        verified_profit=verified_profit,
+    )
+    db.add(post)
+
+    # Award points
+    try:
+        from core.points import award_points
+        await award_points(db, user.id, "profit_shared", f"수익 공유: {bot.name}")
+    except Exception:
+        pass
+
+    await db.commit()
+    await db.refresh(post)
+
+    return {"post_id": str(post.id), "message": "수익이 커뮤니티에 공유되었습니다."}
+
+
+# ─── Helpers ─────────────────────────────────────────────────────────────────
+
+async def _get_user_bot(bot_id: str, user_id, db: AsyncSession) -> Bot:
+    stmt = select(Bot).where(Bot.id == UUID(bot_id), Bot.user_id == user_id)
+    result = await db.execute(stmt)
+    bot = result.scalar_one_or_none()
+    if not bot:
+        raise HTTPException(404, "봇을 찾을 수 없습니다.")
+    return bot
+
+
+def _to_response(bot: Bot, strategy: Strategy = None) -> BotResponse:
+    total = bot.total_trades or 0
+    wins = bot.win_trades or 0
+    return BotResponse(
+        id=str(bot.id), name=bot.name,
+        strategy_id=str(bot.strategy_id) if bot.strategy_id else None,
+        strategy_name=strategy.name if strategy else None,
+        status=bot.status,
+        pair=strategy.pair if strategy else None,
+        max_investment=float(bot.max_investment or 0),
+        total_profit=float(bot.total_profit or 0),
+        total_trades=total, win_trades=wins,
+        win_rate=round(wins / total * 100, 1) if total > 0 else 0,
+        error_message=bot.error_message,
+        started_at=str(bot.started_at) if bot.started_at else None,
+        created_at=str(bot.created_at),
+    )
+
+
+def _trade_response(t: Trade) -> TradeResponse:
+    return TradeResponse(
+        id=str(t.id), side=t.side, pair=t.pair,
+        price=float(t.price), quantity=float(t.quantity),
+        total_krw=float(t.total_krw), fee=float(t.fee),
+        profit=float(t.profit) if t.profit else None,
+        profit_pct=t.profit_pct,
+        trigger_reason=t.trigger_reason,
+        executed_at=str(t.executed_at),
+    )

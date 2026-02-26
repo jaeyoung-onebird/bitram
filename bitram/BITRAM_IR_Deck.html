@@ -1,0 +1,1583 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BITRAM — Investor Deck 2026</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&display=swap');
+
+  :root {
+    --black: #0a0a0a;
+    --dark: #141414;
+    --gray-900: #1c1c1e;
+    --gray-800: #2c2c2e;
+    --gray-700: #3a3a3c;
+    --gray-600: #48484a;
+    --gray-500: #636366;
+    --gray-400: #8e8e93;
+    --gray-300: #aeaeb2;
+    --gray-200: #d1d1d6;
+    --gray-100: #e5e5ea;
+    --gray-50: #f2f2f7;
+    --white: #ffffff;
+    --amber: #f7931a;
+    --amber-light: #fbbf24;
+    --amber-dark: #d97706;
+    --green: #34c759;
+    --red: #ff3b30;
+    --blue: #007aff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--white);
+    color: var(--gray-900);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    font-feature-settings: 'kern' 1, 'liga' 1;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    width: 297mm;
+    height: 210mm;
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  @media print {
+    @page { size: A4 landscape; margin: 0; }
+    .page { page-break-after: always; page-break-inside: avoid; }
+  }
+
+  /* ===== COVER ===== */
+  .cover {
+    background: var(--black);
+    color: var(--white);
+    display: flex;
+    flex-direction: row;
+    overflow: hidden;
+  }
+  .cover-left {
+    flex: 0 0 55%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 56px;
+    position: relative;
+    z-index: 2;
+  }
+  .cover-right {
+    flex: 0 0 45%;
+    position: relative;
+    background: linear-gradient(160deg, #1a1400 0%, #2d1f00 40%, #1a1400 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .cover-right::before {
+    content: '';
+    position: absolute;
+    width: 500px; height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(247,147,26,0.15) 0%, transparent 70%);
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  .cover-right .glyph {
+    font-size: 220px;
+    font-weight: 900;
+    color: rgba(247,147,26,0.08);
+    letter-spacing: -10px;
+    user-select: none;
+  }
+  .cover-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(247,147,26,0.1);
+    border: 1px solid rgba(247,147,26,0.25);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--amber);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 32px;
+    width: fit-content;
+  }
+  .cover-badge .dot {
+    width: 6px; height: 6px;
+    background: var(--amber);
+    border-radius: 50%;
+  }
+  .cover h1 {
+    font-size: 64px;
+    font-weight: 900;
+    letter-spacing: -2px;
+    line-height: 1;
+    margin-bottom: 20px;
+  }
+  .cover h1 span {
+    color: var(--amber);
+  }
+  .cover .tagline {
+    font-size: 18px;
+    font-weight: 400;
+    color: var(--gray-400);
+    line-height: 1.6;
+    max-width: 420px;
+  }
+  .cover-meta {
+    position: absolute;
+    bottom: 40px;
+    left: 56px;
+    display: flex;
+    gap: 32px;
+    font-size: 11px;
+    color: var(--gray-600);
+    letter-spacing: 0.5px;
+  }
+  .cover-meta strong { color: var(--gray-400); font-weight: 600; }
+
+  /* ===== SLIDE LAYOUT ===== */
+  .slide {
+    padding: 40px 52px 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--white);
+  }
+  .slide-dark {
+    background: var(--black);
+    color: var(--white);
+  }
+  .slide-header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .slide-num {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--amber);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .slide-title {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--gray-900);
+  }
+  .slide-dark .slide-title { color: var(--white); }
+  .slide-sub {
+    font-size: 14px;
+    color: var(--gray-400);
+    margin-left: auto;
+    font-weight: 500;
+  }
+  .slide-content { flex: 1; display: flex; flex-direction: column; }
+
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 52px;
+    font-size: 10px;
+    color: var(--gray-300);
+    letter-spacing: 0.5px;
+  }
+  .slide-dark + .footer, .footer-dark {
+    color: var(--gray-600);
+  }
+  .footer-brand { font-weight: 700; color: var(--amber); }
+
+  /* ===== GRID ===== */
+  .row { display: flex; gap: 32px; flex: 1; }
+  .col { flex: 1; display: flex; flex-direction: column; }
+  .col-55 { flex: 0 0 54%; }
+  .col-45 { flex: 0 0 42%; }
+  .col-60 { flex: 0 0 58%; }
+  .col-40 { flex: 0 0 38%; }
+  .g-16 { gap: 16px; }
+  .g-20 { gap: 20px; }
+  .g-12 { gap: 12px; }
+
+  /* ===== PROBLEM CARDS ===== */
+  .p-card {
+    background: var(--gray-50);
+    border-radius: 16px;
+    padding: 24px 28px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--gray-100);
+    transition: all 0.2s;
+  }
+  .p-card-num {
+    font-size: 40px;
+    font-weight: 900;
+    color: var(--gray-200);
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+  .p-card h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 8px;
+    line-height: 1.3;
+  }
+  .p-card p {
+    font-size: 12.5px;
+    color: var(--gray-500);
+    line-height: 1.65;
+    flex: 1;
+  }
+
+  /* ===== STAT BLOCKS ===== */
+  .stat-row {
+    display: flex;
+    gap: 16px;
+  }
+  .stat-block {
+    flex: 1;
+    background: var(--gray-50);
+    border-radius: 14px;
+    padding: 20px 24px;
+    text-align: center;
+    border: 1px solid var(--gray-100);
+  }
+  .stat-block .val {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--gray-900);
+    letter-spacing: -0.5px;
+  }
+  .stat-block .val.amber { color: var(--amber); }
+  .stat-block .lbl {
+    font-size: 11px;
+    color: var(--gray-400);
+    margin-top: 4px;
+    font-weight: 500;
+  }
+
+  /* ===== DARK STAT ===== */
+  .stat-block-dark {
+    flex: 1;
+    background: var(--gray-900);
+    border-radius: 14px;
+    padding: 20px 24px;
+    text-align: center;
+    border: 1px solid var(--gray-800);
+  }
+  .stat-block-dark .val {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--white);
+  }
+  .stat-block-dark .val.amber { color: var(--amber); }
+  .stat-block-dark .lbl {
+    font-size: 11px;
+    color: var(--gray-500);
+    margin-top: 4px;
+    font-weight: 500;
+  }
+
+  /* ===== SOLUTION CARDS ===== */
+  .s-card {
+    flex: 1;
+    border-radius: 16px;
+    padding: 26px 28px;
+    display: flex;
+    flex-direction: column;
+  }
+  .s-card.primary {
+    background: var(--black);
+    color: var(--white);
+  }
+  .s-card.secondary {
+    background: var(--gray-50);
+    border: 1px solid var(--gray-100);
+  }
+  .s-card .s-icon {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+  .s-card.primary .s-icon { background: rgba(247,147,26,0.15); }
+  .s-card.secondary .s-icon { background: var(--gray-100); }
+  .s-card h3 {
+    font-size: 16px; font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .s-card.primary h3 { color: var(--white); }
+  .s-card.secondary h3 { color: var(--gray-900); }
+  .s-card p {
+    font-size: 12.5px; line-height: 1.65;
+  }
+  .s-card.primary p { color: var(--gray-400); }
+  .s-card.secondary p { color: var(--gray-500); }
+
+  /* ===== FEATURE GRID ===== */
+  .feat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    flex: 1;
+  }
+  .feat-card {
+    background: var(--gray-50);
+    border: 1px solid var(--gray-100);
+    border-radius: 14px;
+    padding: 22px 20px;
+    display: flex;
+    flex-direction: column;
+  }
+  .feat-card .fc-icon {
+    width: 36px; height: 36px;
+    background: var(--gray-100);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    margin-bottom: 14px;
+  }
+  .feat-card h4 {
+    font-size: 14px; font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 8px;
+  }
+  .feat-card p {
+    font-size: 11.5px; color: var(--gray-500);
+    line-height: 1.6; flex: 1;
+  }
+  .feat-card .fc-tag {
+    margin-top: 10px;
+    display: flex; gap: 4px; flex-wrap: wrap;
+  }
+  .fc-tag span {
+    font-size: 9px; font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--gray-100);
+    color: var(--gray-600);
+    letter-spacing: 0.3px;
+  }
+
+  /* ===== TABLE ===== */
+  .tb {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+  }
+  .tb th {
+    text-align: left;
+    padding: 12px 16px;
+    font-weight: 600;
+    color: var(--gray-400);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border-bottom: 2px solid var(--gray-100);
+  }
+  .tb td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--gray-50);
+    color: var(--gray-700);
+  }
+  .tb tr:last-child td { border-bottom: none; }
+  .tb .row-hl td {
+    background: var(--gray-50);
+    font-weight: 600;
+    color: var(--gray-900);
+  }
+
+  /* ===== COMP TABLE ===== */
+  .ct {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .ct th {
+    padding: 14px 14px;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    text-align: center;
+    border-bottom: 2px solid var(--gray-100);
+    color: var(--gray-500);
+  }
+  .ct th:first-child { text-align: left; }
+  .ct th.hl-col {
+    background: var(--black);
+    color: var(--amber);
+    border-bottom-color: var(--black);
+    border-radius: 8px 8px 0 0;
+  }
+  .ct td {
+    padding: 11px 14px;
+    text-align: center;
+    border-bottom: 1px solid var(--gray-50);
+    color: var(--gray-600);
+  }
+  .ct td:first-child {
+    text-align: left;
+    font-weight: 600;
+    color: var(--gray-800);
+  }
+  .ct td.hl-col {
+    background: var(--gray-50);
+    color: var(--gray-900);
+    font-weight: 600;
+  }
+  .ct tr:last-child td { border-bottom: none; }
+  .ct tr:last-child td.hl-col { border-radius: 0 0 8px 8px; }
+  .ico-y { color: var(--green); font-weight: 700; }
+  .ico-n { color: var(--gray-300); }
+  .ico-p { color: var(--amber-dark); }
+
+  /* ===== MARKET BARS ===== */
+  .mkt-row {
+    display: flex; align-items: center; gap: 20px;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--gray-100);
+  }
+  .mkt-row:last-child { border-bottom: none; }
+  .mkt-label {
+    width: 48px; font-size: 13px; font-weight: 800;
+    color: var(--gray-400);
+  }
+  .mkt-bar-wrap {
+    flex: 1; height: 36px;
+    background: var(--gray-50);
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+  }
+  .mkt-bar {
+    height: 100%; border-radius: 8px;
+    display: flex; align-items: center;
+    padding-left: 16px;
+    font-size: 11px; font-weight: 600;
+    color: var(--white);
+  }
+  .mkt-bar.tam { width: 100%; background: var(--black); }
+  .mkt-bar.sam { width: 52%; background: var(--gray-700); }
+  .mkt-bar.som { width: 18%; background: var(--amber); color: var(--black); }
+  .mkt-val {
+    width: 110px; text-align: right;
+  }
+  .mkt-val .big { font-size: 18px; font-weight: 800; color: var(--gray-900); }
+  .mkt-val .sm { font-size: 10px; color: var(--gray-400); display: block; margin-top: 2px; }
+
+  /* ===== CALLOUT ===== */
+  .callout {
+    border-radius: 14px;
+    padding: 20px 24px;
+  }
+  .callout.amber {
+    background: #fef7ec;
+    border: 1px solid #fde8b6;
+  }
+  .callout.dark {
+    background: var(--gray-900);
+    border: 1px solid var(--gray-800);
+    color: var(--white);
+  }
+  .callout.light {
+    background: var(--gray-50);
+    border: 1px solid var(--gray-100);
+  }
+  .callout-title {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .callout.amber .callout-title { color: var(--amber-dark); }
+  .callout.dark .callout-title { color: var(--amber); }
+  .callout.light .callout-title { color: var(--gray-400); }
+  .callout p, .callout li {
+    font-size: 12.5px; line-height: 1.7;
+  }
+  .callout.amber p, .callout.amber li { color: #92600a; }
+  .callout.dark p, .callout.dark li { color: var(--gray-400); }
+  .callout.light p, .callout.light li { color: var(--gray-600); }
+  .callout ul { list-style: none; padding: 0; }
+  .callout ul li { padding: 3px 0; }
+  .callout ul li::before {
+    content: '';
+    display: inline-block;
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    margin-right: 10px;
+    vertical-align: middle;
+  }
+  .callout.amber ul li::before { background: var(--amber); }
+  .callout.dark ul li::before { background: var(--amber); }
+  .callout.light ul li::before { background: var(--gray-400); }
+
+  /* ===== TIMELINE ===== */
+  .tl-wrap {
+    display: flex;
+    gap: 0;
+    position: relative;
+    padding-top: 20px;
+  }
+  .tl-wrap::before {
+    content: '';
+    position: absolute;
+    top: 28px;
+    left: 40px; right: 40px;
+    height: 2px;
+    background: var(--gray-100);
+  }
+  .tl-item {
+    flex: 1;
+    text-align: center;
+    position: relative;
+  }
+  .tl-dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--gray-200);
+    border: 3px solid var(--white);
+    margin: 0 auto 12px;
+    position: relative;
+    z-index: 1;
+  }
+  .tl-dot.active { background: var(--amber); box-shadow: 0 0 0 4px rgba(247,147,26,0.15); }
+  .tl-dot.done { background: var(--green); box-shadow: 0 0 0 4px rgba(52,199,89,0.15); }
+  .tl-q {
+    font-size: 12px; font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 6px;
+  }
+  .tl-label {
+    font-size: 11px; font-weight: 600;
+    color: var(--amber-dark);
+    margin-bottom: 6px;
+  }
+  .tl-desc {
+    font-size: 10.5px; color: var(--gray-500);
+    line-height: 1.6;
+  }
+
+  /* ===== PRICING ===== */
+  .price-grid {
+    display: flex; gap: 14px;
+  }
+  .price-card {
+    flex: 1;
+    border-radius: 14px;
+    padding: 22px 20px;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--gray-100);
+    background: var(--white);
+  }
+  .price-card.featured {
+    background: var(--black);
+    border-color: var(--gray-800);
+    color: var(--white);
+  }
+  .price-card .pc-name {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .price-card .pc-name { color: var(--gray-400); }
+  .price-card.featured .pc-name { color: var(--amber); }
+  .price-card .pc-price {
+    font-size: 26px; font-weight: 800;
+    margin-bottom: 6px;
+    letter-spacing: -0.5px;
+  }
+  .price-card .pc-price { color: var(--gray-900); }
+  .price-card.featured .pc-price { color: var(--white); }
+  .price-card .pc-period {
+    font-size: 11px; color: var(--gray-400);
+    margin-bottom: 14px;
+  }
+  .price-card .pc-features {
+    list-style: none; padding: 0;
+    font-size: 11px; line-height: 1.8;
+    flex: 1;
+  }
+  .price-card .pc-features li { color: var(--gray-500); }
+  .price-card.featured .pc-features li { color: var(--gray-400); }
+  .price-card .pc-features li::before {
+    content: ''; display: inline-block;
+    width: 4px; height: 4px; border-radius: 50%;
+    background: var(--gray-300); margin-right: 8px;
+    vertical-align: middle;
+  }
+  .price-card.featured .pc-features li::before { background: var(--amber); }
+
+  /* ===== FUND BOX ===== */
+  .fund-hero {
+    background: var(--black);
+    border-radius: 20px;
+    padding: 36px 40px;
+    color: var(--white);
+    margin-bottom: 20px;
+  }
+  .fund-hero .fh-badge {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--amber);
+    margin-bottom: 12px;
+  }
+  .fund-hero .fh-amount {
+    font-size: 56px; font-weight: 900;
+    letter-spacing: -2px;
+    color: var(--white);
+    line-height: 1;
+  }
+  .fund-hero .fh-amount span { color: var(--amber); }
+  .fund-hero .fh-detail {
+    font-size: 14px; color: var(--gray-500);
+    margin-top: 12px;
+  }
+  .fund-hero .fh-detail strong { color: var(--gray-300); }
+  .fund-bars {
+    display: flex; gap: 12px; margin-top: 24px;
+  }
+  .fund-bar-item {
+    flex: 1;
+    background: var(--gray-900);
+    border-radius: 12px;
+    padding: 18px 16px;
+    text-align: center;
+    border: 1px solid var(--gray-800);
+  }
+  .fund-bar-item .fb-pct {
+    font-size: 24px; font-weight: 800; color: var(--amber);
+  }
+  .fund-bar-item .fb-label {
+    font-size: 10px; color: var(--gray-500);
+    margin-top: 4px; font-weight: 500;
+  }
+
+  /* ===== LAST PAGE ===== */
+  .last {
+    background: var(--black);
+    color: var(--white);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  .last h2 {
+    font-size: 52px; font-weight: 900;
+    letter-spacing: -1px;
+    margin-bottom: 12px;
+  }
+  .last h2 span { color: var(--amber); }
+  .last .tagline2 {
+    font-size: 18px; color: var(--gray-500);
+    margin-bottom: 48px;
+    font-weight: 400;
+  }
+  .contact-row {
+    display: flex; gap: 40px;
+  }
+  .contact-box {
+    text-align: center;
+  }
+  .contact-box .cb-label {
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--gray-600);
+    margin-bottom: 6px;
+  }
+  .contact-box .cb-val {
+    font-size: 15px; font-weight: 600;
+    color: var(--white);
+  }
+  .last-footer {
+    position: absolute;
+    bottom: 24px;
+    font-size: 10px;
+    color: var(--gray-700);
+    letter-spacing: 0.5px;
+  }
+
+  /* ===== UTILS ===== */
+  .mt-6 { margin-top: 6px; }
+  .mt-10 { margin-top: 10px; }
+  .mt-14 { margin-top: 14px; }
+  .mt-16 { margin-top: 16px; }
+  .mt-20 { margin-top: 20px; }
+  .mt-24 { margin-top: 24px; }
+  .mb-6 { margin-bottom: 6px; }
+  .mb-10 { margin-bottom: 10px; }
+  .mb-14 { margin-bottom: 14px; }
+  .mb-16 { margin-bottom: 16px; }
+  .gap-12 { gap: 12px; }
+  .gap-14 { gap: 14px; }
+  .gap-16 { gap: 16px; }
+  .gap-20 { gap: 20px; }
+  .flex-1 { flex: 1; }
+  .section-label {
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--gray-400);
+    margin-bottom: 12px;
+  }
+  .section-label.amber { color: var(--amber-dark); }
+  .bold { font-weight: 700; }
+  .text-amber { color: var(--amber); }
+  .text-green { color: var(--green); }
+  .small-text { font-size: 12px; color: var(--gray-500); line-height: 1.7; }
+  .divider { height: 1px; background: var(--gray-100); margin: 16px 0; }
+</style>
+</head>
+<body>
+
+<!-- ======================== 01. COVER ======================== -->
+<div class="page cover">
+  <div class="cover-left">
+    <div class="cover-badge">
+      <span class="dot"></span>
+      Seed Round 2026
+    </div>
+    <h1>BIT<span>RAM</span></h1>
+    <div class="tagline">
+      누구나 만드는 AI 자동매매,<br>
+      함께 성장하는 소셜 트레이딩 플랫폼
+    </div>
+    <div class="cover-meta">
+      <span><strong>Date</strong> &nbsp;February 2026</span>
+      <span><strong>Stage</strong> &nbsp;Pre-Seed / Seed</span>
+      <span><strong>Status</strong> &nbsp;Confidential</span>
+    </div>
+  </div>
+  <div class="cover-right">
+    <div class="glyph">BR</div>
+  </div>
+</div>
+
+<!-- ======================== 02. PROBLEM ======================== -->
+<div class="page">
+  <div class="slide">
+    <div class="slide-header">
+      <span class="slide-num">01</span>
+      <h2 class="slide-title">Problem</h2>
+    </div>
+    <div class="slide-content">
+      <div class="row gap-20" style="margin-bottom:20px;">
+        <div class="p-card">
+          <div class="p-card-num">01</div>
+          <h3>높은 진입장벽</h3>
+          <p>자동매매를 원하는 투자자의 87%가 코딩 능력 부족으로 포기합니다. 기존 솔루션은 Python/API 지식을 요구하며 설치부터 실행까지 평균 3일 이상 소요됩니다.</p>
+        </div>
+        <div class="p-card">
+          <div class="p-card-num">02</div>
+          <h3>전략 검증 부재</h3>
+          <p>개인 투자자의 73%가 백테스팅 없이 실거래에 돌입합니다. 전략의 과거 성과를 검증할 도구가 없어 감에 의존한 투자로 불필요한 손실이 반복됩니다.</p>
+        </div>
+        <div class="p-card">
+          <div class="p-card-num">03</div>
+          <h3>고립된 투자 환경</h3>
+          <p>유료 리딩방과 폐쇄적 텔레그램 그룹에 의존하는 정보 비대칭 구조. 검증된 전략 공유와 투명한 수익인증이 가능한 커뮤니티가 부재합니다.</p>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-block">
+          <div class="val">1,400만</div>
+          <div class="lbl">국내 암호화폐 투자자</div>
+        </div>
+        <div class="stat-block">
+          <div class="val amber">13%</div>
+          <div class="lbl">자동매매 관심자 중 실행률</div>
+        </div>
+        <div class="stat-block">
+          <div class="val">-23%</div>
+          <div class="lbl">수동매매 평균 손실률</div>
+        </div>
+        <div class="stat-block">
+          <div class="val" style="color:var(--red);">4,200+</div>
+          <div class="lbl">리딩방 피해 신고 (2025)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer">
+    <span><span class="footer-brand">BITRAM</span> &nbsp;&mdash;&nbsp; Investor Deck 2026</span>
+    <span>Confidential</span>
+    <span>02</span>
+  </div>
+</div>
+
+<!-- ======================== 03. SOLUTION ======================== -->
+<div class="page">
+  <div class="slide">
+    <div class="slide-header">
+      <span class="slide-num">02</span>
+      <h2 class="slide-title">Solution</h2>
+    </div>
+    <div class="slide-content">
+      <div class="row gap-20" style="margin-bottom:20px;">
+        <div class="s-card primary">
+          <div class="s-icon">&#x2728;</div>
+          <h3>AI 노코드 전략 빌더</h3>
+          <p>드래그 & 클릭으로 20+ 기술 지표를 조합하여 전략 생성. Claude/GPT가 자연어 입력만으로 수익성 있는 전략을 자동 생성하고 백테스트까지 완료합니다.</p>
+        </div>
+        <div class="s-card secondary">
+          <div class="s-icon">&#x1f4ca;</div>
+          <h3>원클릭 백테스팅 & 실거래</h3>
+          <p>과거 데이터로 전략을 즉시 검증. 승률, 샤프지수, 최대낙폭 등 정밀 지표 제공. 모의거래에서 실거래로 원클릭 전환. 업비트 직접 연동.</p>
+        </div>
+        <div class="s-card secondary">
+          <div class="s-icon">&#x1f465;</div>
+          <h3>소셜 트레이딩 커뮤니티</h3>
+          <p>봇 데이터 기반 수익 자동인증, 전략 마켓플레이스, 원클릭 전략 복사. 포인트/레벨/뱃지 게이미피케이션으로 양질의 기여를 유도합니다.</p>
+        </div>
+      </div>
+      <div class="callout amber">
+        <div class="callout-title">Core Value Proposition</div>
+        <p><strong>코딩 제로:</strong> 누구나 3분 내 봇 생성 &nbsp;&bull;&nbsp; <strong>AI 전략:</strong> "RSI 과매도 반등" 한 줄 입력으로 완성 &nbsp;&bull;&nbsp; <strong>투명한 검증:</strong> 봇 데이터 기반 수익인증 &nbsp;&bull;&nbsp; <strong>네트워크 효과:</strong> 전략 공유 → 복사 → 검증 플라이휠</p>
+      </div>
+    </div>
+  </div>
+  <div class="footer">
+    <span><span class="footer-brand">BITRAM</span> &nbsp;&mdash;&nbsp; Investor Deck 2026</span>
+    <span>Confidential</span>
+    <span>03</span>
+  </div>
+</div>
+
+<!-- ======================== 04. PRODUCT ======================== -->
+<div class="page">
+  <div class="slide">
+    <div class="slide-header">
+      <span class="slide-num">03</span>
+      <h2 class="slide-title">Product</h2>
+      <span class="slide-sub">MVP 100% 완성 &bull; 즉시 런칭 가능</span>
+    </div>
+    <div class="slide-content">
+      <div class="feat-grid">
+        <div class="feat-card">
+          <div class="fc-icon">&#x1f9e0;</div>
+          <h4>노코드 전략 빌더</h4>
+          <p>20+ 기술 지표 조합. 조건/로직/손절/익절 GUI. 템플릿 제공.</p>
+          <div class="fc-tag"><span>RSI</span><span>MACD</span><span>BB</span><span>+17</span></div>
+        </div>
+        <div class="feat-card">
+          <div class="fc-icon">&#x2728;</div>
+          <h4>AI 전략 생성</h4>
+          <p>자연어 입력 → AI가 전략 JSON 생성 → 자동 백테스트 → 수익 전략만 제안.</p>
+          <div class="fc-tag"><span>Claude</span><span>GPT</span><span>Fallback</span></div>
+        </div>
+        <div class="feat-card">
+          <div class="fc-icon">&#x1f4c8;</div>
+          <h4>정밀 백테스팅</h4>
+          <p>수익률, 승률, 샤프지수, MDD, 수익팩터, 에쿼티 커브 시각화.</p>
+          <div class="fc-tag"><span>TimescaleDB</span><span>OHLCV</span></div>
+        </div>
+        <div class="feat-card">
+          <div class="fc-icon">&#x26a1;</div>
+          <h4>실시간 자동매매</h4>
+          <p>업비트 API 직접 연동. 모의/실거래 전환. WebSocket 모니터링. 킬스위치.</p>
+          <div class="fc-tag"><span>Upbit</span><span>WebSocket</span></div>
+        </div>
+        <div class="feat-card">
+          <div class="fc-icon">&#x1f3ea;</div>
+          <h4>전략 마켓플레이스</h4>
+          <p>검증된 전략 공유 및 원클릭 복사. 수익률 기반 랭킹. 전략 판매 수익화.</p>
+          <div class="fc-tag"><span>Marketplace</span><span>Copy</span></div>
+        </div>
+        <div class="feat-card">
+          <div class="fc-icon">&#x1f4ac;</div>
+          <h4>소셜 커뮤니티</h4>
+          <p>수익인증(봇 데이터 연동), 전략 토론, 코인별 서브보드, 시리즈, DM.</p>
+          <div class="fc-tag"><span>Feed</span><span>DM</span><span>Follow</span></div>
+        </div>
+        <div class="feat-card">
+          <div class="fc-icon">&#x1f3c6;</div>
+          <h4>게이미피케이션</h4>
+          <p>포인트 & 10단계 레벨, 뱃지, 일일 퀘스트, 출석체크, 추천인, 대회.</p>
+          <div class="fc-tag"><span>Points</span><span>Levels</span><span>Quests</span></div>
+        </div>
+        <div class="feat-card">
+          <div class="fc-icon">&#x1f4f0;</div>
+          <h4>마켓 인텔리전스</h4>
+          <p>글로벌 크립토 뉴스 RSS 집계 + X/Twitter 피드. AI 자동 한국어 번역.</p>
+          <div class="fc-tag"><span>RSS</span><span>X Feed</span><span>AI번역</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer">
+    <span><span class="footer-brand">BITRAM</span> &nbsp;&mdash;&nbsp; Investor Deck 2026</span>
+    <span>Confidential</span>
+    <span>04</span>
+  </div>
+</div>
+
+<!-- ======================== 05. TECHNOLOGY ======================== -->
+<div class="page">
+  <div class="slide">
+    <div class="slide-header">
+      <span class="slide-num">04</span>
+      <h2 class="slide-title">Technology</h2>
+      <span class="slide-sub">~30,000 LOC &bull; 77 Backend + 60 Frontend Modules</span>
+    </div>
+    <div class="slide-content">
+      <div class="row gap-20">
+        <div class="col-55">
+          <div class="section-label">Tech Stack</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+            <div class="feat-card" style="padding:18px;">
+              <h4 style="font-size:13px; margin-bottom:6px;">Backend</h4>
+              <p style="font-size:11px;">비동기 API 서버. 100+ 엔드포인트. WebSocket 실시간 통신.</p>
+              <div class="fc-tag" style="margin-top:8px;"><span>FastAPI</span><span>Python 3.12</span><span>Celery</span><span>asyncio</span></div>
+            </div>
+            <div class="feat-card" style="padding:18px;">
+              <h4 style="font-size:13px; margin-bottom:6px;">Frontend</h4>
+              <p style="font-size:11px;">SSR + CSR 하이브리드. App Router. 반응형 디자인.</p>
+              <div class="fc-tag" style="margin-top:8px;"><span>Next.js 15</span><span>React 19</span><span>TypeScript</span><span>Tailwind</span></div>
+            </div>
+            <div class="feat-card" style="padding:18px;">
+              <h4 style="font-size:13px; margin-bottom:6px;">Database</h4>
+              <p style="font-size:11px;">관계형 + TimescaleDB 시계열 확장. OHLCV 고성능 쿼리.</p>
+              <div class="fc-tag" style="margin-top:8px;"><span>PostgreSQL 16</span><span>TimescaleDB</span><span>Redis 7</span></div>
+            </div>
+            <div class="feat-card" style="padding:18px;">
+              <h4 style="font-size:13px; margin-bottom:6px;">AI / ML</h4>
+              <p style="font-size:11px;">듀얼 AI 프로바이더. 전략 생성 + 뉴스 번역. 폴백 체인.</p>
+              <div class="fc-tag" style="margin-top:8px;"><span>Claude API</span><span>OpenAI</span><span>NLP</span></div>
+            </div>
+          </div>
+          <div class="callout light" style="padding:16px 20px;">
+            <div class="callout-title">Security</div>
+            <p>HttpOnly Cookie JWT &bull; Fernet 암호화 (API Key) &bull; Redis Rate Limiting &bull; XSS 방어 (bleach) &bull; CSP/Security Headers &bull; RBAC (user/mod/admin)</p>
+          </div>
+        </div>
+        <div class="col-45">
+          <div class="section-label">Architecture</div>
+          <div style="background:var(--black); border-radius:14px; padding:24px; color:var(--gray-400); font-family:'SF Mono','Fira Code',monospace; font-size:10.5px; line-height:2; flex:1;">
+            <pre style="margin:0; color:var(--gray-400);">
+<span style="color:var(--amber)">CLIENT LAYER</span>
+  Next.js 15 ── HTTPS ──┐
+  WebSocket Clients ── WSS ──┤
+                             ▼
+<span style="color:var(--amber)">GATEWAY</span>
+  Nginx (Reverse Proxy + SSL)
+                             │
+                             ▼
+<span style="color:var(--amber)">APPLICATION</span>
+  FastAPI + Uvicorn
+  ├─ API Routes (100+)
+  ├─ Core Logic (Bot Engine)
+  └─ WebSocket Manager
+       │         │         │
+       ▼         ▼         ▼
+<span style="color:var(--amber)">DATA LAYER</span>
+  PostgreSQL   Redis 7   Celery
+  + Timescale  (Cache)   (Workers)
+  (Hypertable) (Broker)  (Beat/Cron)</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer">
+    <span><span class="footer-brand">BITRAM</span> &nbsp;&mdash;&nbsp; Investor Deck 2026</span>
+    <span>Confidential</span>
+    <span>05</span>
+  </div>
+</div>
+
+<!-- ======================== 06. MARKET ======================== -->
+<div class="page">
+  <div class="slide">
+    <div class="slide-header">
+      <span class="slide-num">05</span>
+      <h2 class="slide-title">Market Opportunity</h2>
+    </div>
+    <div class="slide-content">
+      <div class="row gap-20">
+        <div class="col-55">
+          <div class="section-label">TAM / SAM / SOM</div>
+          <div class="mkt-row">
+            <div class="mkt-label">TAM</div>
+            <div class="mkt-bar-wrap"><div class="mkt-bar tam">Global Crypto Trading Bot Market</div></div>
+            <div class="mkt-val"><div class="big">$4.2B</div><div class="sm">~5.5조원 (2026)</div></div>
+          </div>
+          <div class="mkt-row">
+            <div class="mkt-label">SAM</div>
+            <div class="mkt-bar-wrap"><div class="mkt-bar sam">국내 암호화폐 자동매매</div></div>
+            <div class="mkt-val"><div class="big">$380M</div><div class="sm">~5,000억원</div></div>
+          </div>
+          <div class="mkt-row">
+            <div class="mkt-label">SOM</div>
+            <div class="mkt-bar-wrap"><div class="mkt-bar som">노코드 + 소셜</div></div>
+            <div class="mkt-val"><div class="big">$45M</div><div class="sm">~590억원</div></div>
+          </div>
+          <div class="callout amber mt-20">
+            <div class="callout-title">Growth Drivers</div>
+            <ul>
+              <li>국내 암호화폐 투자자 <strong>1,400만 명</strong> 돌파 (2025 금감원)</li>
+              <li>글로벌 봇 시장 CAGR <strong>+37%</strong> (2024-2030)</li>
+              <li>업비트 일일 거래량 <strong>5~10조원</strong></li>
+              <li>AI 자동매매 도구 수요 <strong>+180%</strong> YoY</li>
+            </ul>
+          </div>
+        </div>
+        <div class="col-45">
+          <div class="section-label">Why Now?</div>
+          <div style="display:flex; flex-direction:column; gap:14px;">
+            <div class="feat-card" style="padding:20px;">
+              <h4 style="font-size:13px;">크립토 시장 회복</h4>
+              <p style="margin-top:6px;">비트코인 10만 달러 돌파. 기관 투자 유입 가속. 개인 투자자 재진입 러시.</p>
+            </div>
+            <div class="feat-card" style="padding:20px;">
+              <h4 style="font-size:13px;">AI 트레이딩 대중화</h4>
+              <p style="margin-top:6px;">ChatGPT 이후 AI 활용 거부감 급감. "AI가 알아서 투자" 수요 폭증.</p>
+            </div>
+            <div class="feat-card" style="padding:20px;">
+              <h4 style="font-size:13px;">가상자산법 시행</h4>
+              <p style="margin-top:6px;">규제 안정화로 시장 신뢰도 상승. 기관/개인 모두 진입 가속.</p>
+            </div>
+            <div class="feat-card" style="padding:20px;">
+              <h4 style="font-size:13px;">리딩방 피해 급증</h4>
+              <p style="margin-top:6px;">투명하고 검증 가능한 자동매매 플랫폼 수요. 데이터 기반 의사결정.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer">
+    <span><span class="footer-brand">BITRAM</span> &nbsp;&mdash;&nbsp; Investor Deck 2026</span>
+    <span>Confidential</span>
+    <span>06</span>
+  </div>
+</div>
+
+<!-- ======================== 07. COMPETITION ======================== -->
+<div class="page">
+  <div class="slide">
+    <div class="slide-header">
+      <span class="slide-num">06</span>
+      <h2 class="slide-title">Competitive Landscape</h2>
+    </div>
+    <div class="slide-content">
+      <table class="ct" style="margin-bottom:20px;">
+        <thead>
+          <tr>
+            <th style="width:17%; text-align:left;">Feature</th>
+            <th style="width:14%;">3Commas</th>
+            <th style="width:14%;">Cryptohopper</th>
+            <th style="width:14%;">코인니스봇</th>
+            <th style="width:14%;">개인 코딩</th>
+            <th style="width:14%;" class="hl-col">BITRAM</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>노코드 전략 빌더</td>
+            <td class="ico-p">&#x25CB;</td>
+            <td class="ico-y">&#x25CF;</td>
+            <td class="ico-n">&mdash;</td>
+            <td class="ico-n">&mdash;</td>
+            <td class="hl-col ico-y">&#x25CF; Full</td>
+          </tr>
+          <tr>
+            <td>AI 전략 생성</td>
+            <td class="ico-n">&mdash;</td>
+            <td class="ico-n">&mdash;</td>
+            <td class="ico-n">&mdash;</td>
+            <td class="ico-p">&#x25CB;</td>
+            <td class="hl-col ico-y">&#x25CF; Dual AI</td>
+          </tr>
+          <tr>
+            <td>백테스팅</td>
+            <td class="ico-p">&#x25CB;</td>
+            <td class="ico-y">&#x25CF;</td>
+            <td class="ico-n">&mdash;</td>
+            <td class="ico-p">&#x25CB;</td>
+            <td class="hl-col ico-y">&#x25CF; Advanced</td>
+          </tr>
+          <tr>
+            <td>업비트 네이티브</td>
+            <td class="ico-n">&mdash;</td>
+            <td class="ico-n">&mdash;</td>
+            <td class="ico-y">&#x25CF;</td>
+            <td class="ico-y">&#x25CF;</td>
+            <td class="hl-col ico-y">&#x25CF;</td>
+          </tr>
+          <tr>
+            <td>한국어</td>
+            <td class="ico-n">&mdash;</td>
+            <td class="ico-n">&mdash;</td>
+            <td class="ico-y">&#x25CF;</td>
+            <td class="ico-y">&#x25CF;</td>
+            <td class="hl-col ico-y">&#x25CF;</td>
+          </tr>
+          <tr>
+            <td>소셜 커뮤니티</td>
+            <td class="ico-p">&#x25CB;</td>
+            <td class="ico-p">&#x25CB;</td>
+            <td class="ico-n">&mdash;</td>
+            <td class="ico-n">&mdash;</td>
+            <td class="hl-col ico-y">&#x25CF; Full Social</td>
+          </tr>
+          <tr>
+            <td>수익 자동인증</td>
+            <td class="ico-n">&mdash;</td>
+            <td class="ico-n">&mdash;</td>
+            <td class="ico-n">&mdash;</td>
+            <td class="ico-n">&mdash;</td>
+            <td class="hl-col ico-y">&#x25CF; Bot Data</td>
+          </tr>
+          <tr>
+            <td>게이미피케이션</td>
+            <td class="ico-n">&mdash;</td>
+            <td class="ico-n">&mdash;</td>
+            <td class="ico-n">&mdash;</td>
+            <td class="ico-n">&mdash;</td>
+            <td class="hl-col ico-y">&#x25CF;</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="row gap-16">
+        <div class="callout dark" style="flex:1;">
+          <div class="callout-title">Competitive Moat #1</div>
+          <p><strong style="color:var(--white);">업비트 네이티브</strong> &mdash; 국내 1위 거래소(점유율 80%+) 전용 최적화. 글로벌 서비스의 로컬 진입이 어려운 규제/UX 장벽.</p>
+        </div>
+        <div class="callout dark" style="flex:1;">
+          <div class="callout-title">Competitive Moat #2</div>
+          <p><strong style="color:var(--white);">AI + 노코드</strong> &mdash; 자연어 한 줄 → 전략 생성 → 백테스트 → 실거래 파이프라인. 경쟁사 대비 진입장벽 90% 감소.</p>
+        </div>
+        <div class="callout dark" style="flex:1;">
+          <div class="callout-title">Competitive Moat #3</div>
+          <p><strong style="color:var(--white);">소셜 네트워크 효과</strong> &mdash; 전략 공유 → 검증 → 복사 생태계. 사용자 증가 시 플랫폼 가치가 비선형적으로 성장.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer">
+    <span><span class="footer-brand">BITRAM</span> &nbsp;&mdash;&nbsp; Investor Deck 2026</span>
+    <span>Confidential</span>
+    <span>07</span>
+  </div>
+</div>
+
+<!-- ======================== 08. BUSINESS MODEL ======================== -->
+<div class="page">
+  <div class="slide">
+    <div class="slide-header">
+      <span class="slide-num">07</span>
+      <h2 class="slide-title">Business Model</h2>
+    </div>
+    <div class="slide-content">
+      <div class="row gap-20">
+        <div class="col-60">
+          <div class="section-label">Pricing Tiers</div>
+          <div class="price-grid" style="margin-bottom:20px;">
+            <div class="price-card">
+              <div class="pc-name">Free</div>
+              <div class="pc-price">0원</div>
+              <div class="pc-period">영구 무료</div>
+              <ul class="pc-features">
+                <li>봇 1개</li>
+                <li>전략 3개</li>
+                <li>기본 백테스트</li>
+                <li>커뮤니티 접근</li>
+              </ul>
+            </div>
+            <div class="price-card">
+              <div class="pc-name">Basic</div>
+              <div class="pc-price">19,900원</div>
+              <div class="pc-period">/ 월</div>
+              <ul class="pc-features">
+                <li>봇 5개</li>
+                <li>전략 무제한</li>
+                <li>AI 전략 10회/일</li>
+                <li>실시간 알림</li>
+              </ul>
+            </div>
+            <div class="price-card featured">
+              <div class="pc-name">Pro</div>
+              <div class="pc-price">49,900원</div>
+              <div class="pc-period">/ 월</div>
+              <ul class="pc-features">
+                <li>봇 20개</li>
+                <li>AI 전략 무제한</li>
+                <li>고급 지표</li>
+                <li>우선 지원</li>
+              </ul>
+            </div>
+            <div class="price-card">
+              <div class="pc-name">Premium</div>
+              <div class="pc-price">99,900원</div>
+              <div class="pc-period">/ 월</div>
+              <ul class="pc-features">
+                <li>무제한 봇</li>
+                <li>전용 서버</li>
+                <li>API 우선 액세스</li>
+                <li>1:1 컨설팅</li>
+              </ul>
+            </div>
+          </div>
+          <div class="row gap-16">
+            <div class="callout light" style="flex:1; padding:16px 20px;">
+              <div class="callout-title">Strategy Marketplace</div>
+              <p>전략 판매 시 <strong>수수료 20%</strong>. 개발자 80% 수익. 양면 마켓 플라이휠.</p>
+            </div>
+            <div class="callout light" style="flex:1; padding:16px 20px;">
+              <div class="callout-title">Payment Infra</div>
+              <p>TossPayments 연동 <strong>완료</strong>. 즉시 과금 가능 상태.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-40">
+          <div class="section-label">Unit Economics (Target)</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+            <div class="stat-block">
+              <div class="val">3.2만</div>
+              <div class="lbl">CAC</div>
+            </div>
+            <div class="stat-block">
+              <div class="val">36만</div>
+              <div class="lbl">LTV (12M)</div>
+            </div>
+            <div class="stat-block">
+              <div class="val amber">11.3x</div>
+              <div class="lbl">LTV / CAC</div>
+            </div>
+            <div class="stat-block">
+              <div class="val">8.5%</div>
+              <div class="lbl">Monthly Churn</div>
+            </div>
+          </div>
+          <div class="callout dark" style="padding:20px 24px;">
+            <div class="callout-title">Growth Strategy</div>
+            <ul>
+              <li><strong style="color:var(--white)">Phase 1</strong> &mdash; 무료 사용자 확보 (커뮤니티 + AI 전략)</li>
+              <li><strong style="color:var(--white)">Phase 2</strong> &mdash; 유료 전환 (봇 제한 → 구독 업그레이드)</li>
+              <li><strong style="color:var(--white)">Phase 3</strong> &mdash; 마켓플레이스 GMV 성장 (수수료 수익)</li>
+              <li><strong style="color:var(--white)">Phase 4</strong> &mdash; 엔터프라이즈 / API (기관 투자자)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer">
+    <span><span class="footer-brand">BITRAM</span> &nbsp;&mdash;&nbsp; Investor Deck 2026</span>
+    <span>Confidential</span>
+    <span>08</span>
+  </div>
+</div>
+
+<!-- ======================== 09. GTM & ROADMAP ======================== -->
+<div class="page">
+  <div class="slide">
+    <div class="slide-header">
+      <span class="slide-num">08</span>
+      <h2 class="slide-title">Go-to-Market & Roadmap</h2>
+    </div>
+    <div class="slide-content">
+      <div class="row gap-20" style="margin-bottom:24px;">
+        <div class="col">
+          <div class="section-label">GTM Strategy</div>
+          <div class="row gap-12">
+            <div class="feat-card" style="padding:18px; flex:1;">
+              <h4 style="font-size:12px;">Content Marketing</h4>
+              <p style="margin-top:6px; font-size:11px;">유튜브/블로그 "코딩 없이 자동매매" 시리즈. AI 전략 데모 바이럴. 크립토 커뮤니티 시딩.</p>
+            </div>
+            <div class="feat-card" style="padding:18px; flex:1;">
+              <h4 style="font-size:12px;">Partnership</h4>
+              <p style="margin-top:6px; font-size:11px;">크립토 인플루언서 앰배서더. 코인데스크 코리아, 블록미디어 제휴. 업비트 생태계 파트너.</p>
+            </div>
+            <div class="feat-card" style="padding:18px; flex:1;">
+              <h4 style="font-size:12px;">Viral Loop</h4>
+              <p style="margin-top:6px; font-size:11px;">수익인증 SNS 카드 자동 공유. 추천인 보상. 전략 마켓 개발자 유입 → 사용자 유입 플라이휠.</p>
+            </div>
+            <div class="feat-card" style="padding:18px; flex:1;">
+              <h4 style="font-size:12px;">Target Segment</h4>
+              <p style="margin-top:6px; font-size:11px;">1차: 2030 코린이. 2차: 기존 수동 트레이더. 3차: 전략 개발자 (수익화 플랫폼).</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="section-label">Product Roadmap</div>
+      <div class="tl-wrap">
+        <div class="tl-item">
+          <div class="tl-dot done"></div>
+          <div class="tl-q">Q1 2026</div>
+          <div class="tl-label" style="color:var(--green);">COMPLETED</div>
+          <div class="tl-desc">MVP 런칭<br>노코드 빌더<br>AI 전략 생성<br>커뮤니티 오픈</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot active"></div>
+          <div class="tl-q">Q2 2026</div>
+          <div class="tl-label">NEXT</div>
+          <div class="tl-desc">유료 플랜 출시<br>전략 마켓플레이스<br>모바일 PWA<br>1,000 Users</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <div class="tl-q">Q3 2026</div>
+          <div class="tl-label">PLANNED</div>
+          <div class="tl-desc">빗썸/바이낸스 연동<br>카피트레이딩<br>고급 AI 모델<br>5,000 Users</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <div class="tl-q">Q4 2026</div>
+          <div class="tl-label">PLANNED</div>
+          <div class="tl-desc">엔터프라이즈 API<br>기관 대시보드<br>글로벌 진출 준비<br>15,000 Users</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <div class="tl-q">2027</div>
+          <div class="tl-label">VISION</div>
+          <div class="tl-desc">다국어 지원<br>글로벌 거래소<br>Series A<br>50,000 Users</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer">
+    <span><span class="footer-brand">BITRAM</span> &nbsp;&mdash;&nbsp; Investor Deck 2026</span>
+    <span>Confidential</span>
+    <span>09</span>
+  </div>
+</div>
+
+<!-- ======================== 10. FINANCIAL ======================== -->
+<div class="page">
+  <div class="slide">
+    <div class="slide-header">
+      <span class="slide-num">09</span>
+      <h2 class="slide-title">Financial Projections</h2>
+    </div>
+    <div class="slide-content">
+      <div class="row gap-20">
+        <div class="col-60">
+          <table class="tb" style="margin-bottom:20px;">
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th style="text-align:right;">2026 H1</th>
+                <th style="text-align:right;">2026 H2</th>
+                <th style="text-align:right;">2027</th>
+                <th style="text-align:right;">2028</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Total Users</td>
+                <td style="text-align:right;">1,000</td>
+                <td style="text-align:right;">5,000</td>
+                <td style="text-align:right;">30,000</td>
+                <td style="text-align:right;">100,000</td>
+              </tr>
+              <tr>
+                <td>Conversion Rate</td>
+                <td style="text-align:right;">3%</td>
+                <td style="text-align:right;">5%</td>
+                <td style="text-align:right;">8%</td>
+                <td style="text-align:right;">12%</td>
+              </tr>
+              <tr>
+                <td>Paid Users</td>
+                <td style="text-align:right;">30</td>
+                <td style="text-align:right;">250</td>
+                <td style="text-align:right;">2,400</td>
+                <td style="text-align:right;">12,000</td>
+              </tr>
+              <tr>
+                <td>ARPU (monthly)</td>
+                <td style="text-align:right;">29,900</td>
+                <td style="text-align:right;">35,000</td>
+                <td style="text-align:right;">42,000</td>
+                <td style="text-align:right;">48,000</td>
+              </tr>
+              <tr>
+                <td>Subscription MRR</td>
+                <td style="text-align:right;">90만</td>
+                <td style="text-align:right;">875만</td>
+                <td style="text-align:right;">1.01억</td>
+                <td style="text-align:right;">5.76억</td>
+              </tr>
+              <tr>
+                <td>Marketplace Fee</td>
+                <td style="text-align:right;">&mdash;</td>
+                <td style="text-align:right;">40만</td>
+                <td style="text-align:right;">600만</td>
+                <td style="text-align:right;">4,000만</td>
+              </tr>
+              <tr class="row-hl">
+                <td style="color:var(--amber); font-weight:700;">MRR (Total)</td>
+                <td style="text-align:right; color:var(--amber);">90만</td>
+                <td style="text-align:right; color:var(--amber);">915만</td>
+                <td style="text-align:right; color:var(--amber);">1.07억</td>
+                <td style="text-align:right; color:var(--amber);">6.16억</td>
+              </tr>
+              <tr class="row-hl">
+                <td style="color:var(--amber); font-weight:700;">ARR</td>
+                <td style="text-align:right; color:var(--amber);">1,080만</td>
+                <td style="text-align:right; color:var(--amber);">1.1억</td>
+                <td style="text-align:right; color:var(--amber);">12.8억</td>
+                <td style="text-align:right; color:var(--amber);">73.9억</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="callout amber" style="padding:16px 20px;">
+            <div class="callout-title">BEP (Break-Even Point)</div>
+            <p><strong>2027 Q2 예상</strong> &mdash; 월 고정비 ~3,000만원 기준. 유료 사용자 ~900명 시점. MRR 3,200만원 달성 시.</p>
+          </div>
+        </div>
+        <div class="col-40">
+          <div class="section-label">Key Assumptions</div>
+          <div class="small-text" style="margin-bottom:20px;">
+            &bull; 월 사용자 성장률: 20-30% (초기)<br>
+            &bull; 유료 전환율: 3% → 12% (기능 고도화)<br>
+            &bull; ARPU 상승: Pro/Premium 비율 증가<br>
+            &bull; Churn rate: 8.5% → 5% (리텐션 강화)<br>
+            &bull; 서버 비용: MRR의 15-20%<br>
+            &bull; AI API 비용: MRR의 5-8%
+          </div>
+          <div class="callout dark" style="padding:24px;">
+            <div class="callout-title">2028 Target Valuation</div>
+            <div style="margin-top:8px;">
+              <div style="font-size:14px; color:var(--gray-400);">ARR 73.9억 x 10배 멀티플</div>
+              <div style="font-size:40px; font-weight:900; color:var(--amber); letter-spacing:-1px; margin-top:8px;">739억원</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer">
+    <span><span class="footer-brand">BITRAM</span> &nbsp;&mdash;&nbsp; Investor Deck 2026</span>
+    <span>Confidential</span>
+    <span>10</span>
+  </div>
+</div>
+
+<!-- ======================== 11. FUNDING ASK ======================== -->
+<div class="page">
+  <div class="slide">
+    <div class="slide-header">
+      <span class="slide-num">10</span>
+      <h2 class="slide-title">The Ask</h2>
+    </div>
+    <div class="slide-content">
+      <div class="row gap-20">
+        <div class="col-55">
+          <div class="fund-hero">
+            <div class="fh-badge">Seed Round</div>
+            <div class="fh-amount">5<span>억원</span></div>
+            <div class="fh-detail">Pre-money Valuation <strong>20억원</strong> &nbsp;&bull;&nbsp; Equity <strong>20%</strong></div>
+            <div class="fund-bars">
+              <div class="fund-bar-item">
+                <div class="fb-pct">40%</div>
+                <div class="fb-label">Development<br>팀 채용 + 인프라</div>
+              </div>
+              <div class="fund-bar-item">
+                <div class="fb-pct">30%</div>
+                <div class="fb-label">Marketing<br>GTM + 바이럴</div>
+              </div>
+              <div class="fund-bar-item">
+                <div class="fb-pct">20%</div>
+                <div class="fb-label">Operations<br>서버 + AI API</div>
+              </div>
+              <div class="fund-bar-item">
+                <div class="fb-pct">10%</div>
+                <div class="fb-label">Reserve<br>예비비</div>
+              </div>
+            </div>
+          </div>
+          <table class="tb">
+            <thead>
+              <tr>
+                <th>Use of Funds</th>
+                <th style="text-align:right;">Amount</th>
+                <th>Detail</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>개발팀 채용</td><td style="text-align:right;">1.5억</td><td>시니어 백엔드 1 + 프론트엔드 1 + QA 1</td></tr>
+              <tr><td>인프라 확장</td><td style="text-align:right;">0.5억</td><td>AWS/GCP, 전용 봇 워커 분리, CDN</td></tr>
+              <tr><td>마케팅/PR</td><td style="text-align:right;">1.5억</td><td>콘텐츠 마케팅, 인플루언서, 커뮤니티</td></tr>
+              <tr><td>운영비</td><td style="text-align:right;">1.0억</td><td>AI API, 서버, 사무실, 법무/회계</td></tr>
+              <tr><td>예비비</td><td style="text-align:right;">0.5억</td><td>리스크 대응</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="col-45">
+          <div class="section-label">Investment Highlights</div>
+          <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
+            <div class="feat-card" style="padding:20px; border-left:3px solid var(--amber); border-radius:0 14px 14px 0;">
+              <h4 style="font-size:13px;">Product Readiness</h4>
+              <p style="margin-top:6px;">MVP 100% 완성. 즉시 런칭 가능. 30,000 LOC 풀스택 플랫폼.</p>
+            </div>
+            <div class="feat-card" style="padding:20px; border-left:3px solid var(--amber); border-radius:0 14px 14px 0;">
+              <h4 style="font-size:13px;">AI-Native Differentiation</h4>
+              <p style="margin-top:6px;">Claude + GPT 듀얼 AI 전략 생성. 경쟁사 대비 유일한 AI 네이티브 봇.</p>
+            </div>
+            <div class="feat-card" style="padding:20px; border-left:3px solid var(--amber); border-radius:0 14px 14px 0;">
+              <h4 style="font-size:13px;">Market Timing</h4>
+              <p style="margin-top:6px;">BTC $100K 시대. 국내 1,400만 투자자. AI 트레이딩 수요 폭증.</p>
+            </div>
+            <div class="feat-card" style="padding:20px; border-left:3px solid var(--amber); border-radius:0 14px 14px 0;">
+              <h4 style="font-size:13px;">Scalability</h4>
+              <p style="margin-top:6px;">업비트 → 빗썸/바이낸스 → 글로벌. 소셜 네트워크 효과.</p>
+            </div>
+          </div>
+          <div class="callout dark" style="padding:20px 24px;">
+            <div class="callout-title">Runway</div>
+            <p>5억원 투자 시 <strong style="color:var(--white)">18개월</strong> 운영 가능. BEP 도달 전 Series A 가능.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer">
+    <span><span class="footer-brand">BITRAM</span> &nbsp;&mdash;&nbsp; Investor Deck 2026</span>
+    <span>Confidential</span>
+    <span>11</span>
+  </div>
+</div>
+
+<!-- ======================== 12. CLOSING ======================== -->
+<div class="page last">
+  <h2>BIT<span>RAM</span></h2>
+  <div class="tagline2">누구나 만드는 AI 자동매매, 함께 성장하는 트레이딩</div>
+  <div class="contact-row">
+    <div class="contact-box">
+      <div class="cb-label">Website</div>
+      <div class="cb-val">bitram.co.kr</div>
+    </div>
+    <div class="contact-box" style="width:1px; background:var(--gray-800);"></div>
+    <div class="contact-box">
+      <div class="cb-label">Email</div>
+      <div class="cb-val">contact@bitram.co.kr</div>
+    </div>
+    <div class="contact-box" style="width:1px; background:var(--gray-800);"></div>
+    <div class="contact-box">
+      <div class="cb-label">Phone</div>
+      <div class="cb-val">010-XXXX-XXXX</div>
+    </div>
+  </div>
+  <div class="last-footer">&copy; 2026 BITRAM. All rights reserved. This document is strictly confidential.</div>
+</div>
+
+</body>
+</html>
