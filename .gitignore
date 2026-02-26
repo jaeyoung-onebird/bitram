@@ -1,38 +1,39 @@
-# Dependencies
-node_modules/
-package-lock.json
-
-# Next.js build
-.next/
-out/
-
 # Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*.so
 venv/
 .venv/
 
-# Environment variables
+# Node/Next
+node_modules/
+.next/
+out/
+package-lock.json
+
+# Env & secrets
 .env
-.env.local
-.env.production.local
-.env.*.local
+.env.*
+!.env.example
 !.env.production.example
 
-# OS
-.DS_Store
-Thumbs.db
+# Logs / runtime
+*.log
+nohup.out
 
-# IDE
+# OS / editor
+.DS_Store
 .vscode/
 .idea/
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+coverage/
 
 # Claude
 .claude/
-
-# Logs
-*.log
 
 # Uploads
 uploads/
