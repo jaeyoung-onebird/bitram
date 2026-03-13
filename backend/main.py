@@ -43,8 +43,20 @@ from api.quests import router as quests_router
 from api.series import router as series_router
 from api.og import router as og_router
 from api.twitter import router as twitter_router
+from api.polymarket import router as polymarket_router
 
 settings = get_settings()
+
+# ─── Logging ──────────────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+# 핵심 모듈 로그 레벨 설정
+for mod in ("core.polymarket_bot_manager", "core.polymarket_ai_trader", "core.polymarket_scanner", "core.polymarket_client"):
+    logging.getLogger(mod).setLevel(logging.DEBUG)
+
 logger = logging.getLogger(__name__)
 
 # Sentry initialization
@@ -90,6 +102,44 @@ async def lifespan(app: FastAPI):
                     logger.error(f"Failed to resume bot {bot.id}: {e}")
     except Exception as e:
         logger.error(f"Failed to resume bots on startup: {e}")
+
+    # Reset stale PM bots: 컨테이너 재시작 시 running 상태를 stopped로 리셋
+    try:
+        from db.database import AsyncSessionLocal
+        from db.models import PolymarketBot
+        from sqlalchemy import select as sel, update as upd
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(sel(PolymarketBot).where(PolymarketBot.status == "running"))
+            pm_bots = result.scalars().all()
+            if pm_bots:
+                await db.execute(
+                    upd(PolymarketBot)
+                    .where(PolymarketBot.status == "running")
+                    .values(status="stopped")
+                )
+                await db.commit()
+                logger.info(f"Reset {len(pm_bots)} stale PM bot(s) to stopped on startup")
+            # Clear all PM Redis keys
+            try:
+                from core.redis_cache import get_redis
+                r = await get_redis()
+                pm_keys = []
+                async for key in r.scan_iter(match="pm:bot:*"):
+                    pm_keys.append(key)
+                if pm_keys:
+                    await r.delete(*pm_keys)
+                    logger.info(f"Cleared {len(pm_keys)} stale PM Redis keys")
+            except Exception:
+                pass
+    except Exception as e:
+        logger.error(f"Failed to reset PM bots on startup: {e}")
+
+    # Start RTDS WebSocket for live crypto prices
+    try:
+        from core.polymarket_rtds import start_rtds
+        await start_rtds()
+    except Exception as e:
+        logger.warning(f"Failed to start RTDS WebSocket: {e}")
 
     # Start Telegram bot polling (disabled temporarily to avoid restart conflicts)
     if False and settings.TELEGRAM_BOT_TOKEN:
@@ -201,6 +251,7 @@ app.include_router(quests_router)
 app.include_router(series_router)
 app.include_router(og_router)
 app.include_router(twitter_router)
+app.include_router(polymarket_router)
 
 
 @app.get("/")

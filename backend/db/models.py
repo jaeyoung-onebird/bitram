@@ -678,6 +678,65 @@ class QuestClaim(Base):
     )
 
 
+# ─── Polymarket Bots ──────────────────────────────────────────────────────
+
+class PolymarketBot(Base):
+    __tablename__ = "polymarket_bots"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=gen_uuid)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    exchange_key_id = Column(UUID(as_uuid=True), ForeignKey("exchange_keys.id", ondelete="SET NULL"), nullable=True)
+    name = Column(String(100), nullable=False)
+    bot_type = Column(String(20), nullable=False)  # scanner, arbitrage
+    status = Column(String(20), default="idle")  # idle, running, paused, error, stopped
+    config = Column(JSONB, nullable=False, default=dict)
+    current_positions = Column(JSONB, default=list)
+    total_profit_usdc = Column(Numeric(18, 6), default=0)
+    total_trades = Column(Integer, default=0)
+    win_trades = Column(Integer, default=0)
+    error_message = Column(Text, nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    stopped_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    user = relationship("User", backref="pm_bots")
+
+    __table_args__ = (
+        Index("ix_pm_bots_user_id", "user_id"),
+        Index("ix_pm_bots_status", "status"),
+    )
+
+
+class PolymarketTrade(Base):
+    __tablename__ = "polymarket_trades"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=gen_uuid)
+    pm_bot_id = Column(UUID(as_uuid=True), ForeignKey("polymarket_bots.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    side = Column(String(10), nullable=False)  # buy, sell
+    market_slug = Column(String(300), nullable=False)
+    question = Column(Text, nullable=True)  # Human-readable market question
+    condition_id = Column(String(100), nullable=False)
+    outcome = Column(String(10), nullable=False)  # Yes, No
+    price = Column(Numeric(10, 4), nullable=False)  # 0~1
+    quantity = Column(Numeric(18, 6), nullable=False)
+    total_usdc = Column(Numeric(18, 6), nullable=False)
+    fee_usdc = Column(Numeric(18, 6), default=0)
+    profit_usdc = Column(Numeric(18, 6), nullable=True)
+    profit_pct = Column(Float, nullable=True)
+    trigger_reason = Column(Text, nullable=True)
+    executed_at = Column(DateTime(timezone=True), default=utcnow)
+
+    pm_bot = relationship("PolymarketBot", backref="trades")
+
+    __table_args__ = (
+        Index("ix_pm_trades_bot_id", "pm_bot_id"),
+        Index("ix_pm_trades_user_id", "user_id"),
+        Index("ix_pm_trades_executed_at", "executed_at"),
+    )
+
+
 # ─── Tweet Log (Twitter Bot) ──────────────────────────────────────────────
 
 class TweetLog(Base):

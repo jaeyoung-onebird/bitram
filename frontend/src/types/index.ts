@@ -652,6 +652,175 @@ export interface PublicProfile {
   is_following: boolean;
 }
 
+// ─── Polymarket ──────────────────────────────────────────────────────────────
+
+export interface PMMarket {
+  conditionId: string;
+  condition_id?: string;
+  question: string;
+  slug: string;
+  category?: string;
+  tags?: string[];
+  endDate?: string;
+  volume24hr?: number;
+  volumeNum?: number;
+  liquidityNum?: number;
+  outcomePrices?: string[];
+  outcomes?: string[];
+  clobTokenIds?: string[];
+  active?: boolean;
+  closed?: boolean;
+}
+
+export interface PMBot {
+  id: string;
+  name: string;
+  bot_type: "scanner" | "arbitrage";
+  status: "idle" | "running" | "paused" | "error" | "stopped";
+  config: Record<string, unknown>;
+  current_positions: PMPosition[];
+  total_profit_usdc: number;
+  total_trades: number;
+  win_trades: number;
+  win_rate: number;
+  error_message: string | null;
+  started_at: string | null;
+  created_at: string;
+}
+
+export interface PMPosition {
+  token_id?: string;
+  condition_id?: string;
+  market_slug?: string;
+  question?: string;
+  outcome?: string;
+  entry_price: number;
+  quantity: number;
+  current_price?: number;
+  pnl_usdc?: number;
+  pnl_pct?: number;
+  entry_time?: string;
+  bot_id?: string;
+  bot_name?: string;
+  // arbitrage-specific
+  type?: string;
+  yes_price?: number;
+  no_price?: number;
+  shares?: number;
+  expected_profit?: number;
+}
+
+export interface PMTrade {
+  id: string;
+  side: "buy" | "sell";
+  market_slug: string;
+  question?: string;
+  condition_id: string;
+  outcome: string;
+  price: number;
+  quantity: number;
+  total_usdc: number;
+  fee_usdc: number;
+  profit_usdc: number | null;
+  profit_pct: number | null;
+  trigger_reason: string | null;
+  executed_at: string;
+}
+
+export interface PMStats {
+  total_profit_usdc: number;
+  total_trades: number;
+  win_trades: number;
+  win_rate: number;
+  active_bots: number;
+  total_bots: number;
+  total_positions: number;
+}
+
+export interface PMArbitrageOpportunity {
+  condition_id: string;
+  question: string;
+  slug: string;
+  yes_price: number;
+  no_price: number;
+  total_cost: number;
+  spread: number;
+  expected_profit_pct: number;
+  volume_24h: number;
+  yes_token_id: string;
+  no_token_id: string;
+}
+
+export interface PMConnectionStatus {
+  connected: boolean;
+  has_api_key: boolean;
+  has_valid_key: boolean;
+  paper_trading: boolean;
+}
+
+// ─── Polymarket AI Analysis ──────────────────────────────────────────────────
+
+export interface PMAICandidate {
+  condition_id: string;
+  question: string;
+  description: string;
+  category: string;
+  yes_price: number;
+  no_price: number;
+  spread: number;
+  volume_24h: number;
+  liquidity: number;
+  end_date: string;
+  slug: string;
+  yes_token_id: string;
+  no_token_id: string;
+}
+
+export interface PMAIAnalysis {
+  condition_id: string;
+  question: string;
+  category: string;
+  market_yes_price: number;
+  probability: number;
+  confidence: number;
+  edge: number;
+  edge_pct: number;
+  recommended_side: "YES" | "NO" | "SKIP";
+  kelly_fraction: number;
+  reasoning: string;
+  key_factors: string[];
+  risks: string[];
+  error?: string;
+  raw_response?: string;
+}
+
+export interface PMAILogEntry {
+  timestamp: string;
+  condition_id: string;
+  question: string;
+  category: string;
+  market_yes_price: number;
+  claude_probability: number;
+  claude_confidence: number;
+  edge: number;
+  recommended_side: string;
+  kelly_fraction: number;
+  reasoning: string;
+  end_date?: string;
+  resolved_outcome?: number;
+}
+
+export interface PMAIAccuracy {
+  total: number;
+  resolved: number;
+  traded: number;
+  skipped: number;
+  pending: number;
+  accuracy: number | null;
+  brier_score: number | null;
+  categories: Record<string, number>;
+}
+
 // ─── Admin ───────────────────────────────────────────────────────────────────
 export interface AdminOverview {
   counts: {

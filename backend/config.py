@@ -75,6 +75,13 @@ class Settings(BaseSettings):
     KAKAO_CLIENT_ID: str = ""
     KAKAO_CLIENT_SECRET: str = ""
 
+    # Polymarket (API 키는 각 사용자가 UI에서 등록)
+    POLYMARKET_CHAIN_ID: int = 137  # Polygon
+    POLYMARKET_PAPER_TRADING: bool = True
+    POLYMARKET_FEE_RATE: float = 0.02
+    POLYMARKET_RELAYER_API_KEY: str = ""
+    POLYMARKET_RELAYER_ADDRESS: str = ""
+
     # App
     BACKEND_URL: str = "http://localhost:8000"
     FRONTEND_URL: str = "http://localhost:3000"

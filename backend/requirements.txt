@@ -48,5 +48,8 @@ bleach==6.2.0
 # Email
 aiosmtplib==3.0.2
 
+# Polymarket
+py-clob-client>=0.5.0
+
 # Error Monitoring
 sentry-sdk[fastapi]==2.19.2

@@ -579,6 +579,133 @@ class ApiClient {
       method: "POST", body: JSON.stringify({ role }),
     });
   }
+  // ─── Polymarket ──────────────────────────────────────────────────────
+
+  // Status
+  pmGetStatus() {
+    return this.request<import("@/types").PMConnectionStatus>("/api/polymarket/status");
+  }
+
+  // Markets
+  pmGetMarkets(params?: { search?: string; limit?: number; offset?: number }) {
+    const q = new URLSearchParams();
+    if (params?.search) q.set("search", params.search);
+    if (params?.limit) q.set("limit", String(params.limit));
+    if (params?.offset) q.set("offset", String(params.offset));
+    const qs = q.toString();
+    return this.request<import("@/types").PMMarket[]>(`/api/polymarket/markets${qs ? `?${qs}` : ""}`);
+  }
+  pmGetMarket(conditionId: string) {
+    return this.request<import("@/types").PMMarket>(`/api/polymarket/markets/${conditionId}`);
+  }
+
+  // Bots
+  pmCreateBot(data: { name: string; bot_type: string; exchange_key_id?: string; config?: Record<string, unknown> }) {
+    return this.request<import("@/types").PMBot>("/api/polymarket/bots", {
+      method: "POST", body: JSON.stringify(data),
+    });
+  }
+  pmGetBots() {
+    return this.request<import("@/types").PMBot[]>("/api/polymarket/bots");
+  }
+  pmGetBot(id: string) {
+    return this.request<import("@/types").PMBot>(`/api/polymarket/bots/${id}`);
+  }
+  pmStartBot(id: string) {
+    return this.request<{ status: string; mode: string }>(`/api/polymarket/bots/${id}/start`, { method: "POST" });
+  }
+  pmStopBot(id: string) {
+    return this.request<{ status: string }>(`/api/polymarket/bots/${id}/stop`, { method: "POST" });
+  }
+  pmPauseBot(id: string) {
+    return this.request<{ status: string }>(`/api/polymarket/bots/${id}/pause`, { method: "POST" });
+  }
+  pmUpdateBotConfig(id: string, config: Record<string, unknown>) {
+    return this.request<{ status: string }>(`/api/polymarket/bots/${id}/config`, {
+      method: "PUT", body: JSON.stringify(config),
+    });
+  }
+  pmDeleteBot(id: string) {
+    return this.request<{ status: string }>(`/api/polymarket/bots/${id}`, { method: "DELETE" });
+  }
+  pmGetBotTrades(id: string, page = 1) {
+    return this.request<import("@/types").PMTrade[]>(`/api/polymarket/bots/${id}/trades?page=${page}`);
+  }
+
+  // Positions & Stats
+  pmGetPositions() {
+    return this.request<import("@/types").PMPosition[]>("/api/polymarket/positions");
+  }
+  pmGetStats() {
+    return this.request<import("@/types").PMStats>("/api/polymarket/stats");
+  }
+  pmGetMarketStatus() {
+    return this.request<{
+      active_rounds: number;
+      rounds: Array<{ slug: string; question: string; remaining_min: number }>;
+      status: string;
+      now_utc: string;
+      next_round_at?: string;
+      next_round_in_min?: number;
+    }>("/api/polymarket/market-status");
+  }
+  pmGetAllTrades(page = 1) {
+    return this.request<import("@/types").PMTrade[]>(`/api/polymarket/trades?page=${page}`);
+  }
+
+  // Arbitrage
+  pmGetArbitrageOpportunities(minSpread = 0.01, minVolume = 5000) {
+    return this.request<import("@/types").PMArbitrageOpportunity[]>(
+      `/api/polymarket/arbitrage/opportunities?min_spread=${minSpread}&min_volume=${minVolume}`
+    );
+  }
+
+  // Keys
+  pmRegisterKey(data: { private_key: string; api_key: string; api_secret: string; api_passphrase: string; label?: string }) {
+    return this.request<{ id: string; label: string }>("/api/polymarket/keys", {
+      method: "POST", body: JSON.stringify(data),
+    });
+  }
+  pmGetKeys() {
+    return this.request<Array<{ id: string; label: string; is_valid: boolean; created_at: string }>>("/api/polymarket/keys");
+  }
+  pmVerifyKey(id: string) {
+    return this.request<{ is_valid: boolean }>(`/api/polymarket/keys/${id}/verify`, { method: "POST" });
+  }
+  pmDeleteKey(id: string) {
+    return this.request<{ status: string }>(`/api/polymarket/keys/${id}`, { method: "DELETE" });
+  }
+
+  // AI Analysis
+  pmAIScan() {
+    return this.request<import("@/types").PMAICandidate[]>("/api/polymarket/ai/scan", { method: "POST" });
+  }
+  pmAIAnalyze(data: {
+    condition_id: string;
+    question: string;
+    description?: string;
+    yes_price: number;
+    no_price: number;
+    category?: string;
+    end_date?: string;
+  }) {
+    const params = new URLSearchParams({
+      condition_id: data.condition_id,
+      question: data.question,
+      yes_price: String(data.yes_price),
+      no_price: String(data.no_price),
+    });
+    if (data.description) params.set("description", data.description);
+    if (data.category) params.set("category", data.category);
+    if (data.end_date) params.set("end_date", data.end_date);
+    return this.request<import("@/types").PMAIAnalysis>(`/api/polymarket/ai/analyze?${params}`, { method: "POST" });
+  }
+  pmAIGetLogs(limit = 50) {
+    return this.request<import("@/types").PMAILogEntry[]>(`/api/polymarket/ai/logs?limit=${limit}`);
+  }
+  pmAIGetAccuracy() {
+    return this.request<import("@/types").PMAIAccuracy>("/api/polymarket/ai/accuracy");
+  }
 }
 
 export const api = new ApiClient();
